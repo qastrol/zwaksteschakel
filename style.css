@@ -1,0 +1,222 @@
+:root {
+  --bg: #0f1724;
+  --card: #0b1220;
+  --accent: #c084fc;
+  --muted: #94a3b8;
+  color-scheme: dark;
+}
+
+body {
+  font-family: Inter, ui-sans-serif, system-ui, Segoe UI, Roboto, Helvetica, Arial;
+  margin: 0;
+  padding: 18px;
+  background: linear-gradient(180deg, #071021 0%, #081226 100%);
+  color: #e6eef8;
+}
+
+.container { max-width: none; margin: 0; }
+h1 { font-size: 20px; margin: 4px 0 12px; }
+
+.grid {
+  display: grid;
+  grid-template-columns: 360px 1fr 320px;
+  gap: 16px;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 6px 20px rgba(2, 6, 23, .6);
+}
+
+label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+input[type=text], input[type=number] {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.04);
+  background: #071126;
+  color: inherit;
+}
+
+.small { font-size: 13px; color: var(--muted); }
+.players-list { display: flex; flex-direction: column; gap: 6px; }
+
+button {
+  background: var(--accent);
+  border: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #041023;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.secondary { background: #1f2937; color: #e6eef8; }
+.bank { background: #64d18a; color: #04210d; }
+.wrong { background: #ef4444; color: white; }
+.right { background: #10b981; color: white; }
+.next { background: #0ea5e9; color: #022331; }
+.eliminate { background: #ff6b6b; color: white; }
+
+.divider {
+  margin: 12px 0;
+  border: none;
+  border-top: 1px dashed rgba(255,255,255,.04);
+}
+
+.rounds, .chain, .players-ui {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.round-pill, .step {
+  background: #061424;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.03);
+}
+
+.big { font-size: 28px; font-weight: 700; }
+.muted { color: var(--muted); }
+.player-card {
+  background: #051224;
+  padding: 8px;
+  border-radius: 10px;
+  min-width: 140px;
+}
+
+.host-row { display: flex; gap: 8px; align-items: center; }
+.round-info { display: flex; justify-content: space-between; align-items: center; }
+.spacer { flex: 1; }
+.button-row { margin-top: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.flash-container {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+}
+
+.flash-message {
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 6px;
+  margin-top: 5px;
+  font-weight: 600;
+}
+
+/* Avatar styles */
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.photo-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  background: #051224;
+  border: 1px solid rgba(255,255,255,.03);
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.photo-card:hover {
+  border-color: var(--accent);
+  background: #061a2a;
+}
+
+.photo-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.photo-preview {
+  width: 70px;
+  height: 70px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,.1);
+  transition: all 0.2s;
+}
+
+.photo-preview:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(192, 132, 252, 0.3);
+}
+
+.photo-label {
+  font-size: 11px;
+  text-align: center;
+  width: 100%;
+  color: var(--muted);
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 2.2em;
+  line-height: 1.1em;
+}
+
+.photo-actions {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.photo-btn {
+  background: #1f2937;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #e6eef8;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 10px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.photo-btn:hover {
+  background: var(--accent);
+  color: #041023;
+}
+
+.upload-btn {
+  background: #0ea5e9;
+  color: #022331;
+}
+
+.upload-btn:hover {
+  background: #06b6d4;
+}
+
+.remove-btn {
+  background: #ef4444;
+  color: white;
+}
+
+.remove-btn:hover {
+  background: #dc2626;
+}
+
+.player-photos-container label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+

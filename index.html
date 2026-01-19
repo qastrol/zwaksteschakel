@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>De Zwakste Schakel — Host Tool</title>
+
+  <!-- Koppel je CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>De Zwakste Schakel — The Weakest Link</h1>
+    <div class="grid">
+      
+      <div class="card">
+        <div class="controls">
+          <button id="applyBtn">Maak spel</button>
+          <button id="resetBtn" class="secondary">Reset</button>
+        </div><br>
+        <label>Aantal kandidaten (2–10)</label>
+        <input id="num" type="number" min="2" max="10" value="6" />
+        <div style="height:8px"></div>
+
+
+
+        <div style="height:12px"></div>
+        <label>Kandidaten</label>
+        <div id="playersInputs" class="players-list"></div>
+        <div id="playerPhotos" class="player-photos-container" style="display:none; margin-top:12px; padding-top:12px; border-top:1px dashed rgba(255,255,255,.04);">
+          <label>Profielfoto's (optioneel)</label>
+          <div id="photosGrid" class="photos-grid"></div>
+        </div>
+
+
+  <h3>Maximale totale geldprijs</h3>
+  <label>Stel het totale bedrag in dat in het hele spel te verdienen is:</label>
+  <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+    <input id="maxTotalInput" type="number" step="0.01" min="0.01" value="15.00" style="width:120px;">
+    <button id="setMaxTotalBtn">Toepassen</button>
+  </div>
+  <div id="maxTotalDisplay" style="margin-top:4px; font-size:0.9em; color:#666;">
+    Standaard maximum: €15.00
+  </div>
+
+          <h3>Finale ronde optie</h3>
+        <label>Wat gebeurt er bij 2 spelers?</label>
+        <select id="twoPlayerMode" style="width:100%; padding:8px; margin-top:6px;">
+          <option value="play">Speel reguliere ronde + Head-to-Head</option>
+          <option value="skip">Direct naar Head-to-Head (geen reguliere ronde)</option>
+        </select>
+        <div style="margin-top:4px; font-size:0.85em; color:#888;">
+          Bij 'Direct naar H2H' wordt de prijzenpot per ronde verhoogd.
+        </div>
+
+          <div style="height:8px"></div>
+          <h3>Bank-instelling bij ronde-max</h3>
+          <label>Wat moet er gebeuren wanneer het maximaal haalbare bedrag van een ronde bereikt is?</label>
+          <select id="autoBankMode" style="width:100%; padding:8px; margin-top:6px;">
+            <option value="manual">Handmatig banken (standaard)</option>
+            <option value="auto">Automatisch banken en einde ronde</option>
+          </select>
+          <div style="margin-top:4px; font-size:0.85em; color:#888;">
+            Bij 'Automatisch' wordt de ronde direct gebankt en gestopt zodra het ronde-maximum bereikt is.
+          </div>
+      </div>
+
+      <div class="card">
+        <div class="round-info">
+          <div>
+            <div class="muted">Huidige ronde</div>
+            <div id="currentRound" class="big">—</div>
+            <div class="muted">Spelers: <span id="playerCount">0</span></div>
+            <div id="roundTimer">⏱ 00:00</div>
+          </div>
+          <div class="bank-info">
+            <div class="muted">Pot totaal</div>
+            <div id="bankTotal" class="big">€0.00</div>
+            <div class="muted">Huidige ketting</div>
+            <div id="chainValue" class="big">€0.00</div>
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <div class="host-row">
+          <div>
+            <label>Rondes</label>
+            <div id="roundsList" class="rounds"></div>
+          </div>
+          <div class="spacer"></div>
+          <div>
+            <label>Geldketting</label>
+            <div id="moneyChain" class="chain"></div>
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button id="startRound">Start ronde</button>
+          <button id="bankBtn" class="bank">Bank</button>
+          <button id="wrongBtn" class="wrong">Fout</button>
+          <button id="rightBtn" class="right">Goed</button>
+          <button id="nextRound" class="next">Volgende ronde</button>
+        </div>
+
+        <div id="flashContainer" class="flash-container"></div>
+
+        <hr class="divider" />
+
+        <div id="currentQuestion" class="card">
+  <em>Hier komt de vraag voor de speler...</em>
+</div>
+
+<!-- Head-to-Head container, verborgen totdat nodig -->
+<div id="headToHeadContainer" style="display:none;">
+  <h3>Head-to-Head Ronde</h3>
+  <div id="firstPlayerSelectArea">
+    <label for="firstPlayerSelect">Kies wie de eerste vraag krijgt:</label>
+    <select id="firstPlayerSelect"></select>
+    <button id="confirmFirstPlayerBtn">Bevestig eerste vraag</button>
+  </div>
+  <div id="h2hQuestionArea" style="display:none;">
+    <div id="h2hQuestion"></div>
+    <button id="h2hRightBtn">Goed</button>
+    <button id="h2hWrongBtn">Fout</button>
+    <div id="h2hScores"></div>
+  </div>
+</div>
+
+
+        <div>
+          <label>Stemfase — kies wie je gaat elimineren</label>
+          <div style="margin-bottom:12px;">
+            <button id="startVotingBtn">Start Voting</button>
+            <div id="votingTimer" style="display:inline-block; margin-left:12px; font-weight:600;">⏱ 00:25</div>
+          </div>
+          <div id="voteArea" class="players-ui"></div>
+          <div style="margin-top:8px">
+            <button id="eliminateBtn" class="eliminate">Elimineer geselecteerde</button>
+          </div><br>
+        </div>
+        <div id="statsTab" style="margin-top:12px;">
+          <h3>Statistieken van deze ronde</h3>
+          <div id="strongestWeakest"></div>
+        </div>
+
+      </div>
+      
+      <div class="card">
+        <div id="audioControls" class="audio-controls">
+          <h4>Audio / Muziek</h4>
+          <button id="afterInterviewBtn">After Interview Bumper</button>
+          <button id="generalBumper">Main Sting</button>
+          <button id="IntroBtn">Intro</button>
+          <button id="ShortStingBtn">Short Sting</button>
+          <button id="GeneralBedBtn">General Bed</button>
+        </div>
+      </div>
+    </div>
+
+  <!-- Koppel je JS -->
+  <script src="script.js"></script>
+  <script src="quizvragen.js"></script>
+</body>
+</html>

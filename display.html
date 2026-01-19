@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>De Zwakste Schakel - Display</title>
+    <link rel="stylesheet" href="display.css">
+</head>
+<body>
+    <!-- 🎬 SCENE 1: Wachten op spel -->
+    <div id="scene-waiting" class="scene active">
+        <div class="logo-container">
+            <h1 class="main-logo"><img src="./assets/logo.webp" alt="De Zwakste Schakel Logo"></h1>
+        </div>
+        <div class="status-text">Wachten op nieuw spel...</div>
+        <div class="hint-text">De host start het spel via het control panel</div>
+    </div>
+
+    <!-- 🎬 SCENE 2: Lobby - Kandidaten voorstelling -->
+    <div id="scene-lobby" class="scene">
+        <div class="logo-container">
+            <h1 class="main-logo"><img src="./assets/logo.webp" alt="De Zwakste Schakel Logo"></h1>
+        </div>
+        <div class="players-grid" id="lobbyPlayers">
+            <!-- Kandidaten worden hier dynamisch toegevoegd -->
+        </div>
+        <div class="game-info">
+            <div class="info-item">
+                <span class="label">Totale pot:</span>
+                <span class="value" id="lobbyMaxTotal">€15.00</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Kandidaten:</span>
+                <span class="value" id="lobbyPlayerCount">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎬 SCENE 3: Ronde voorbereiding (tussen "Volgende ronde" en "Start ronde") -->
+    <div id="scene-round-ready" class="scene">
+        <div class="round-header">
+            <div class="round-title" id="roundReadyTitle">Ronde 1</div>
+            <div class="tussenstand-total" id="tussenstandReadyTotal">€0,00</div>
+        </div>
+
+        <div class="game-layout">
+            <!-- Bovenste sectie: Voorbereiding bericht -->
+            <div class="question-section">
+                <div class="question-display" id="readyDisplay">
+                    <div class="ready-message">Ronde staat klaar</div>
+                    <div class="ready-subtitle">Wachten op start...</div>
+                </div>
+            </div>
+
+            <!-- Middengedeelte: Geldketting -->
+            <div class="middle-section">
+                <!-- Linker kolom: Geldketting verticaal -->
+                <div class="money-chain-container">
+                    <div class="chain-header">
+                        <div class="chain-label"></div>
+                    </div>
+                    <div class="money-chain" id="moneyChainReady">
+                        <div class="steps-column" id="moneyChainStepsReady"></div>
+                        <div class="stacked-layer" id="moneyChainStackReady"></div>
+                    </div>
+                    <div class="pot-container">
+                        <div class="pot-step" id="potStepReady">€0,00</div>
+                        <div class="bank-action">BANK</div>
+                    </div>
+                </div>
+                <!-- Rechterzijde: ruimte -->
+                <div class="spacer-right"></div>
+            </div>
+
+            <!-- Onderste sectie: Kandidaten -->
+            <div class="players-row-section">
+                <div class="players-row" id="activePlayers3">
+                    <!-- Actieve spelers in horizontale rij -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎬 SCENE 4: Ronde actief -->
+    <div id="scene-round" class="scene">
+        <div class="round-header">
+            <div class="round-title" id="roundTitle">Ronde 1</div>
+            <div class="tussenstand-total" id="tussenstandTotal">€0,00</div>
+            <div class="round-timer" id="roundTimer">⏱ 00:00</div>
+        </div>
+
+        <div class="game-layout">
+            <!-- Bovenste sectie: Vraag -->
+            <div class="question-section">
+                <div class="question-display" id="questionDisplay">
+                    <div class="current-player" id="currentPlayerName">Kandidaat</div>
+                    <div class="question-text" id="questionText">
+                        <em>Wachten op vraag...</em>
+                    </div>
+                </div>
+                <!-- Kandidaat foto met slide-effect -->
+                <div class="player-slide-container">
+                    <div class="player-slide-wrapper">
+                        <img src="./assets/avatar.png" alt="Kandidaat" id="questionPlayerAvatar" class="question-player-avatar">
+                        <div class="question-player-name" id="questionPlayerNameDisplay">Kandidaat</div>
+                    </div>
+                </div>
+                <!-- Bank Max Melding -->
+                <div class="bank-max-message" id="bankMaxMessage" style="display: none;">
+                    <div class="bank-max-icon">💰</div>
+                    <div class="bank-max-text">RONDE-MAX BEREIKT!</div>
+                    <div class="bank-max-subtitle">De tijd is gestopt</div>
+                </div>
+            </div>
+
+            <!-- Middengedeelte: Vraag rechts, Geldketting rechts -->
+            <div class="middle-section">
+                <!-- Linker kolom: Geldketting verticaal -->
+                <div class="money-chain-container">
+                    <div class="chain-header">
+                        <div class="chain-label"></div>
+                    </div>
+                    <div class="money-chain" id="moneyChain">
+                        <div class="steps-column" id="moneyChainSteps"></div>
+                        <div class="stacked-layer" id="moneyChainStack"></div>
+                    </div>
+                    <div class="pot-container">
+                        <div class="pot-step" id="potStep">€0,00</div>
+                        <div class="bank-action">BANK</div>
+                    </div>
+                </div>
+                <!-- Rechterzijde: ruimte voor content (vraag e.d.) -->
+                <div class="spacer-right"></div>
+            </div>
+
+            <!-- Onderste sectie: Alle kandidaten in rij -->
+            <div class="players-row-section">
+                <div class="players-row" id="activePlayers2">
+                    <!-- Actieve spelers in horizontale rij -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎬 SCENE 5: Stemfase -->
+    <div id="scene-voting" class="scene">
+        <div class="voting-header">
+            <h1 class="main-title">STEMFASE</h1>
+            <div class="subtitle">Wie is de zwakste schakel?</div>
+        </div>
+
+        <div class="voting-timer" id="votingTimerDisplay">⏱ 00:25</div>
+
+        <div class="voting-players-grid" id="votingStats">
+            <!-- Kandidaten met profielfoto's en namen -->
+        </div>
+
+        <div class="strongest-weakest" id="strongestWeakestDisplay" style="display: none;">
+            <!-- Verborgen voor kandidaten -->
+        </div>
+    </div>
+
+    <!-- 🎬 SCENE 6: Eliminatie -->
+    <div id="scene-elimination" class="scene">
+        <div class="elimination-container">
+            <img src="./assets/avatar.png" alt="Kandidaat" id="eliminatedPlayerAvatar" class="elimination-avatar">
+            <div class="elimination-message">
+                <span id="eliminatedPlayerName">Kandidaat</span>Jij bent de zwakste schakel.
+            </div>
+            <div class="elimination-subtitle">Tot ziens!</div>
+        </div>
+    </div>
+
+    <!-- 🎬 SCENE 6b: Head-to-Head startkeuze (wie krijgt eerste vraag?) -->
+    <div id="scene-h2h-select" class="scene">
+        <div class="h2h-start-container">
+            <h1 class="main-title">DE FINALE</h1>
+            <div class="h2h-start-subtitle">Kies de startspeler</div>
+            
+            <div class="h2h-start-players">
+                <div class="h2h-start-player">
+                    <img src="./assets/avatar.png" alt="Kandidaat 1" id="h2hSelectAvatar1" class="h2h-start-avatar">
+                    <div class="h2h-start-name" id="h2hSelectName1">Kandidaat 1</div>
+                </div>
+                
+                <div class="h2h-start-vs">VS</div>
+                
+                <div class="h2h-start-player">
+                    <img src="./assets/avatar.png" alt="Kandidaat 2" id="h2hSelectAvatar2" class="h2h-start-avatar">
+                    <div class="h2h-start-name" id="h2hSelectName2">Kandidaat 2</div>
+                </div>
+            </div>
+            
+            <div class="h2h-start-info" id="h2hSelectInfo">
+                <span id="h2hStrongestName">Sterkste schakel</span> kiest wie de eerste vraag krijgt.
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎬 SCENE 7: Head-to-Head Start -->
+    <div id="scene-h2h-start" class="scene">
+        <div class="h2h-start-container">
+            <h1 class="main-title">DE FINALE</h1>
+            
+            <div class="h2h-start-players">
+                <div class="h2h-start-player">
+                    <img src="./assets/avatar.png" alt="Kandidaat 1" id="h2hStartAvatar1" class="h2h-start-avatar">
+                    <div class="h2h-start-name" id="h2hStartName1">Kandidaat 1</div>
+                </div>
+                
+                <div class="h2h-start-vs">VS</div>
+                
+                <div class="h2h-start-player">
+                    <img src="./assets/avatar.png" alt="Kandidaat 2" id="h2hStartAvatar2" class="h2h-start-avatar">
+                    <div class="h2h-start-name" id="h2hStartName2">Kandidaat 2</div>
+                </div>
+            </div>
+            
+            <div class="h2h-start-info" id="h2hStartInfo">
+                <span id="h2hStarterName">Kandidaat</span> begint met de eerste vraag
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎬 SCENE 8: Head-to-Head Finale -->
+    <div id="scene-headtohead" class="scene">
+        <div class="h2h-header">
+            <h1 class="main-title">DE FINALE</h1>
+        </div>
+
+        <div class="h2h-layout">
+            <div class="h2h-player" id="h2hPlayer1">
+                <img src="./assets/avatar.png" alt="Kandidaat 1" class="h2h-player-avatar">
+                <div class="h2h-player-name">Kandidaat 1</div>
+                <div class="h2h-score-display">
+                    <div class="h2h-score-balls" id="h2hScoreBalls1"></div>
+                    <div class="h2h-score-text" id="h2hScoreText1">0/5</div>
+                </div>
+            </div>
+
+            <div class="h2h-question" id="h2hQuestion">
+                <em>Wachten op vraag...</em>
+            </div>
+
+            <div class="h2h-player" id="h2hPlayer2">
+                <img src="./assets/avatar.png" alt="Kandidaat 2" class="h2h-player-avatar">
+                <div class="h2h-player-name">Kandidaat 2</div>
+                <div class="h2h-score-display">
+                    <div class="h2h-score-balls" id="h2hScoreBalls2"></div>
+                    <div class="h2h-score-text" id="h2hScoreText2">0/5</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎬 SCENE 9: Winnaar -->
+    <div id="scene-winner" class="scene">
+        <div class="winner-container">
+            <div class="winner-announcement">De winnaar is...</div>
+            <img src="./assets/avatar.png" alt="Winnaar" id="winnerAvatar" class="winner-avatar">
+            <div class="winner-name" id="winnerName">Kandidaat</div>
+            <div class="winner-prize" id="winnerPrize">€0.00</div>
+            <div class="winner-subtitle">Gefeliciteerd!</div>
+        </div>
+    </div>
+
+    <script src="display.js"></script>
+</body>
+</html>

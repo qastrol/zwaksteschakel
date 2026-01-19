@@ -1,0 +1,16 @@
+{
+  "name": "de-zwakste-schakel-server",
+  "version": "1.0.0",
+  "description": "WebSocket server voor De Zwakste Schakel quiz applicatie",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["websocket", "quiz", "de-zwakste-schakel"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2"
+  }
+}
