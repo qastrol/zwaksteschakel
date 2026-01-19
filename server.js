@@ -287,9 +287,8 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log('DE ZWAKSTE SCHAKEL - WebSocket Server');
     console.log('='.repeat(60));
     console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Host URL:    http://localhost:${PORT}/`);
+    console.log(`Host URL:    http://localhost:${PORT}/dashboard`);
     console.log(`Display URL: http://localhost:${PORT}/display`);
-    console.log(`Candidate Voting: http://localhost:${PORT}/candidate-voting`);
     console.log('');
     console.log('Network access:');
     
@@ -299,9 +298,8 @@ server.listen(PORT, '0.0.0.0', () => {
     for (const name of Object.keys(interfaces)) {
         for (const iface of interfaces[name]) {
             if (iface.family === 'IPv4' && !iface.internal) {
-                console.log(`  http://${iface.address}:${PORT}/          (Host)`);
+                console.log(`  http://${iface.address}:${PORT}/dashboard          (Host)`);
                 console.log(`  http://${iface.address}:${PORT}/display  (Display)`);
-                console.log(`  http://${iface.address}:${PORT}/candidate-voting  (Candidate Voting)`);
             }
         }
     }
