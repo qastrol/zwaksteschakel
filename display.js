@@ -1,20 +1,10 @@
-/* ============================================
-   DE ZWAKSTE SCHAKEL - DISPLAY SCRIPT
-   
-   Dit script synchroniseert de display met 
-   de host via WebSocket of BroadcastChannel
-   ============================================ */
-
-// WebSocket connection
 let ws = null;
 let wsConnected = false;
 
-// Fallback BroadcastChannel
 let channel = null;
 
-// State tracking
 let gameState = {
-  phase: 'waiting', // waiting, lobby, round, voting, elimination, headtohead, winner
+  phase: 'waiting', 
   players: [],
   currentRound: 0,
   currentPlayer: null,
@@ -22,18 +12,17 @@ let gameState = {
   moneyChain: [],
   chainPosition: 0,
   bankTotal: 0,
-  roundBanked: 0, // bedrag gebankt in deze ronde
+  roundBanked: 0, 
   roundTime: 0,
   votingTime: 25,
   h2hScores: [0, 0],
-  h2hAnswers: [[],[]], // Track correct/wrong answers per player
+  h2hAnswers: [[],[]], 
   finalists: [],
   h2hStrongest: null,
   h2hStarterIndex: null,
   maxTotal: 15.00
 };
 
-// Scene Elements
 const scenes = {
   waiting: document.getElementById('scene-waiting'),
   lobby: document.getElementById('scene-lobby'),
@@ -47,15 +36,12 @@ const scenes = {
   winner: document.getElementById('scene-winner')
 };
 
-// Initialize display
 function init() {
   console.log('Display geïnitialiseerd. Verbinden met server...');
   showScene('waiting');
   
-  // Try to connect via WebSocket
   connectWebSocket();
   
-  // Fallback to BroadcastChannel for local testing
   setTimeout(() => {
     if (!wsConnected) {
       console.log('WebSocket niet beschikbaar, gebruik BroadcastChannel');
@@ -72,7 +58,6 @@ function connectWebSocket() {
       console.log('WebSocket verbonden met server');
       wsConnected = true;
       
-      // Register as display
       ws.send(JSON.stringify({
         type: 'register',
         role: 'display'
@@ -95,7 +80,6 @@ function connectWebSocket() {
       wsConnected = false;
       updateStatus('Verbinding verbroken - probeer opnieuw...');
       
-      // Try to reconnect
       setTimeout(connectWebSocket, 3000);
     };
     
@@ -117,7 +101,6 @@ function setupBroadcastChannel() {
       handleHostMessage(event.data);
     };
     
-    // Request initial state
     channel.postMessage({ type: 'display_ready' });
     
     updateStatus('Lokale verbinding actief (BroadcastChannel)');
@@ -135,7 +118,6 @@ function updateStatus(message) {
   });
 }
 
-// Handle messages from host
 function handleHostMessage(data) {
   console.log('Ontvangen van host:', data);
   
@@ -156,7 +138,7 @@ function handleHostMessage(data) {
       gameState.currentRound = data.round;
       gameState.roundTime = data.time;
       gameState.chainPosition = 0;
-      gameState.roundBanked = 0; // reset voor deze ronde
+      gameState.roundBanked = 0; 
       showRound();
       break;
       
@@ -205,7 +187,6 @@ function handleHostMessage(data) {
     case 'headtohead_started':
       gameState.finalists = data.finalists || [];
       gameState.h2hStarterIndex = (typeof data.starter === 'number') ? data.starter : null;
-      // Show start scene with starter info
       if (data.starter !== undefined) {
         showH2HStart(data.finalists, data.starter);
       } else {
@@ -225,8 +206,6 @@ function handleHostMessage(data) {
       
     case 'h2h_score':
       gameState.h2hScores = data.scores;
-      // Track which player just answered (based on active player from last question)
-      // The host sends scores after correct/wrong, so we increment the tracker
       updateH2HScores();
       break;
       
@@ -239,14 +218,12 @@ function handleHostMessage(data) {
       break;
       
     case 'state_sync':
-      // Full state synchronization
       Object.assign(gameState, data.state);
       syncToCurrentState();
       break;
   }
 }
 
-// Show specific scene
 function showScene(sceneName) {
   Object.values(scenes).forEach(scene => {
     if (scene) scene.classList.remove('active');
@@ -258,12 +235,10 @@ function showScene(sceneName) {
   }
 }
 
-// Show lobby with all players
 function showLobby() {
   const container = document.getElementById('lobbyPlayers');
   container.innerHTML = '';
   
-  // Toon alleen actieve kandidaten (niet geëlimineerd)
   const activePlayers = gameState.players.filter(p => !p.elim);
   
   activePlayers.forEach((player, index) => {
@@ -284,13 +259,11 @@ function showLobby() {
   showScene('lobby');
 }
 
-// Show round ready scene (after next round clicked, before start round)
 function showRoundReady() {
   const roundNum = gameState.currentRound + 1;
   document.getElementById('roundReadyTitle').textContent = `Ronde ${roundNum}`;
   document.getElementById('tussenstandReadyTotal').textContent = `€${gameState.bankTotal.toFixed(2).replace('.', ',')}`;
   
-  // Render money chain
   const stepsCol = document.getElementById('moneyChainStepsReady');
   const stackCol = document.getElementById('moneyChainStackReady');
   if (stepsCol && stackCol) {
@@ -300,7 +273,6 @@ function showRoundReady() {
     const chain = gameState.moneyChain.slice();
     const chainLen = chain.length;
     
-    // Toon alle stappen (geen progress nog)
     chain.forEach((amount, idx) => {
       const stepEl = document.createElement('div');
       stepEl.className = 'chain-step';
@@ -309,11 +281,9 @@ function showRoundReady() {
     });
   }
   
-  // Update pot
   const potEl = document.getElementById('potStepReady');
   if (potEl) potEl.textContent = `€0,00`;
   
-  // Render active players
   const container = document.getElementById('activePlayers3');
   if (container) {
     container.innerHTML = '';
@@ -333,7 +303,6 @@ function showRoundReady() {
   showScene('round-ready');
 }
 
-// Show Head-to-Head selection (waiting for host to pick starter)
 function showH2HSelection(finalists = [], strongestName = '') {
   if (!finalists.length) return;
 
@@ -353,9 +322,7 @@ function showH2HSelection(finalists = [], strongestName = '') {
   showScene('h2h-select');
 }
 
-// Show round scene
 function showRound() {
-  // Update round title
   const roundTitle = document.getElementById('roundTitle');
   const alive = gameState.players.filter(p => !p.elim).length;
   
@@ -365,23 +332,19 @@ function showRound() {
     roundTitle.textContent = `Finale Ronde`;
   }
   
-  // Render players row (bottom)
   renderActivePlayers2();
   
-  // Render money chain
   renderMoneyChain();
   
   showScene('round');
 }
 
-// Render active players row (bottom horizontal)
 function renderActivePlayers2() {
   const container = document.getElementById('activePlayers2');
   if (!container) return;
   
   container.innerHTML = '';
   
-  // Toon alleen actieve kandidaten
   const activePlayers = gameState.players.filter(p => !p.elim);
   
   activePlayers.forEach(player => {
@@ -398,7 +361,6 @@ function renderActivePlayers2() {
   });
 }
 
-// Render money chain
 function renderMoneyChain() {
   const stepsCol = document.getElementById('moneyChainSteps');
   const stackCol = document.getElementById('moneyChainStack');
@@ -406,14 +368,11 @@ function renderMoneyChain() {
   stepsCol.innerHTML = '';
   stackCol.innerHTML = '';
 
-  // Gebruik de volledige geldketting (inclusief €0,00 stap)
   const chain = gameState.moneyChain.slice();
   const chainLen = chain.length;
   const lastIndex = chainLen - 1;
-  // topReady only when we have fully completed all steps (one past the last step)
   const topReady = chainLen > 0 && gameState.chainPosition >= chainLen;
 
-  // Future/current steps remain in place until earned
   const futureStart = topReady ? chainLen : gameState.chainPosition;
   const futureSteps = chain.slice(futureStart, chainLen);
 
@@ -434,7 +393,6 @@ function renderMoneyChain() {
     stepsCol.appendChild(stepEl);
   });
 
-  // Achieved stack overlays from the bottom, stays put until bank/wrong
   const achievedSteps = topReady ? chain : chain.slice(0, gameState.chainPosition);
   achievedSteps.forEach((amount, idx) => {
     const absoluteIndex = idx;
@@ -449,30 +407,24 @@ function renderMoneyChain() {
     stackCol.appendChild(stepEl);
   });
 
-  // Update bottom pot step: show only the banked total for THIS ROUND
   const potTotal = (gameState.roundBanked || 0);
   const potEl = document.getElementById('potStep');
   if (potEl) potEl.textContent = `€${potTotal.toFixed(2).replace('.', ',')}`;
 }
 
-// Update question display
 function updateQuestion() {
   if (gameState.currentPlayer) {
     document.getElementById('currentPlayerName').textContent = gameState.currentPlayer.name;
     
-    // Update player avatar with slide effect
     const avatarImg = document.getElementById('questionPlayerAvatar');
     const nameDisplay = document.getElementById('questionPlayerNameDisplay');
     const wrapper = document.querySelector('.player-slide-wrapper');
     
     if (avatarImg && nameDisplay && wrapper) {
-      // Remove old animation classes
       wrapper.classList.remove('slide-from-left', 'slide-from-right');
       
-      // Determine slide direction (alternate for variety)
       const slideDirection = Math.random() > 0.5 ? 'slide-from-left' : 'slide-from-right';
       
-      // Reset animation by removing/re-adding class
       wrapper.style.animation = 'none';
       setTimeout(() => {
         avatarImg.src = gameState.currentPlayer.photo || './assets/avatar.png';
@@ -487,50 +439,38 @@ function updateQuestion() {
   renderActivePlayers2();
 }
 
-// Handle correct answer
 function handleCorrectAnswer() {
-  // Move chain position up
   const chainLen = gameState.moneyChain.length;
   if (chainLen > 0 && gameState.chainPosition < chainLen) {
     gameState.chainPosition++;
     renderMoneyChain();
   }
   
-  // Visual feedback
   flashEffect('#22c55e');
 }
 
-// Handle wrong answer
 function handleWrongAnswer() {
-  // Reset chain position
   gameState.chainPosition = 0;
   renderMoneyChain();
   
-  // Visual feedback
   flashEffect('#dc2626');
 }
 
-// Handle bank
 function handleBank(amount) {
-  // Use the exact amount from host instead of calculating from chain
   gameState.bankTotal += amount;
   gameState.roundBanked += amount;
   
-  // Reset chain
   gameState.chainPosition = 0;
   renderMoneyChain();
   
-  // Visual feedback
   flashEffect('#ffd60a');
 }
 
-// Show bank max message
 function showBankMaxMessage() {
   const messageEl = document.getElementById('bankMaxMessage');
   if (messageEl) {
     messageEl.style.display = 'block';
     
-    // Hide after 4 seconds
     setTimeout(() => {
       messageEl.style.transition = 'opacity 0.5s ease-out';
       messageEl.style.opacity = '0';
@@ -543,7 +483,6 @@ function showBankMaxMessage() {
   }
 }
 
-// Update round timer
 function updateRoundTimer() {
   const minutes = Math.floor(gameState.roundTime / 60);
   const seconds = gameState.roundTime % 60;
@@ -551,7 +490,6 @@ function updateRoundTimer() {
     `⏱ ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-// Update tussenstand (total banked amount)
 function updateTussenstand() {
   const el = document.getElementById('tussenstandTotal');
   if (el) {
@@ -559,15 +497,12 @@ function updateTussenstand() {
   }
 }
 
-// Show voting phase
 function showVoting(statsData) {
   const container = document.getElementById('votingStats');
   container.innerHTML = '';
   
-  // Toon alleen actieve kandidaten in de stemfase
   const alivePlayers = gameState.players.filter(p => !p.elim);
   
-  // Toon kandidaten met profielfoto's en namen
   alivePlayers.forEach(player => {
     const playerEl = document.createElement('div');
     playerEl.className = 'voting-player';
@@ -579,14 +514,12 @@ function showVoting(statsData) {
     container.appendChild(playerEl);
   });
   
-  // Verberg sterkste/zwakste schakel informatie
   const swContainer = document.getElementById('strongestWeakestDisplay');
   swContainer.innerHTML = '';
   
   showScene('voting');
 }
 
-// Update voting timer
 function updateVotingTimer() {
   const minutes = Math.floor(gameState.votingTime / 60);
   const seconds = gameState.votingTime % 60;
@@ -594,12 +527,10 @@ function updateVotingTimer() {
     `⏱ ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-// Show elimination
 function showElimination(playerName) {
   const eliminatedPlayer = gameState.players.find(p => p.name === playerName);
   document.getElementById('eliminatedPlayerName').textContent = playerName;
   
-  // Set avatar
   const avatarEl = document.getElementById('eliminatedPlayerAvatar');
   if (eliminatedPlayer && avatarEl) {
     avatarEl.src = eliminatedPlayer.avatar || './assets/avatar.png';
@@ -607,18 +538,14 @@ function showElimination(playerName) {
   
   showScene('elimination');
   
-  // Return to appropriate scene after 5 seconds
   setTimeout(() => {
     const alive = gameState.players.filter(p => !p.elim).length;
     if (alive === 2) {
-      // Request host to start head-to-head
     } else if (alive > 2) {
-      // Continue with next round
     }
   }, 5000);
 }
 
-// Show Head-to-Head Start Scene
 function showH2HStart(finalists, starterIndex) {
   const avatar1 = finalists[0].avatar || './assets/avatar.png';
   const avatar2 = finalists[1].avatar || './assets/avatar.png';
@@ -633,13 +560,11 @@ function showH2HStart(finalists, starterIndex) {
   
   showScene('h2h-start');
   
-  // Auto-advance to actual game after 4 seconds
   setTimeout(() => {
     showHeadToHead(finalists);
   }, 4000);
 }
 
-// Show Head-to-Head
 function showHeadToHead(finalists) {
   const player1 = document.getElementById('h2hPlayer1');
   const player2 = document.getElementById('h2hPlayer2');
@@ -650,19 +575,16 @@ function showHeadToHead(finalists) {
   player1.querySelector('.h2h-player-name').textContent = finalists[0].name;
   player2.querySelector('.h2h-player-name').textContent = finalists[1].name;
   
-  // Update avatars if they exist
   let img1 = player1.querySelector('.h2h-player-avatar');
   let img2 = player2.querySelector('.h2h-player-avatar');
   if (img1) img1.src = avatar1;
   if (img2) img2.src = avatar2;
   
-  // Initialize score balls (5 per player)
   initializeScoreBalls();
   
   showScene('headtohead');
 }
 
-// Initialize score balls
 function initializeScoreBalls() {
   const ballsContainer1 = document.getElementById('h2hScoreBalls1');
   const ballsContainer2 = document.getElementById('h2hScoreBalls2');
@@ -670,7 +592,7 @@ function initializeScoreBalls() {
   ballsContainer1.innerHTML = '';
   ballsContainer2.innerHTML = '';
   
-  gameState.h2hAnswers = [[], []]; // Reset tracking
+  gameState.h2hAnswers = [[], []]; 
   
   for (let i = 0; i < 5; i++) {
     const ball1 = document.createElement('div');
@@ -687,11 +609,9 @@ function initializeScoreBalls() {
   updateH2HScores();
 }
 
-// Update H2H question
 function updateH2HQuestion(question, activePlayerIndex) {
   document.getElementById('h2hQuestion').textContent = question;
   
-  // Highlight active player
   const players = document.querySelectorAll('.h2h-player');
   players.forEach((p, i) => {
     if (i === activePlayerIndex) {
@@ -702,11 +622,9 @@ function updateH2HQuestion(question, activePlayerIndex) {
   });
 }
 
-// Update H2H scores with balls
 function updateH2HScores() {
   const scores = gameState.h2hScores;
   
-  // Update player 1 balls
   for (let i = 0; i < 5; i++) {
     const ball = document.getElementById(`h2h-ball-1-${i}`);
     if (ball) {
@@ -717,7 +635,6 @@ function updateH2HScores() {
     }
   }
   
-  // Update player 2 balls
   for (let i = 0; i < 5; i++) {
     const ball = document.getElementById(`h2h-ball-2-${i}`);
     if (ball) {
@@ -728,12 +645,10 @@ function updateH2HScores() {
     }
   }
   
-  // Update score text
   document.getElementById('h2hScoreText1').textContent = `${scores[0]}/5`;
   document.getElementById('h2hScoreText2').textContent = `${scores[1]}/5`;
 }
 
-// Show winner
 function showWinner(winner, prize) {
     const avatarImg = document.getElementById('winnerAvatar');
     if (avatarImg) {
@@ -744,7 +659,6 @@ function showWinner(winner, prize) {
   showScene('winner');
 }
 
-// Reset display
 function resetDisplay() {
   gameState = {
     phase: 'waiting',
@@ -769,7 +683,6 @@ function resetDisplay() {
   showScene('waiting');
 }
 
-// Sync to current state (for reconnection)
 function syncToCurrentState() {
   switch (gameState.phase) {
     case 'lobby':
@@ -801,7 +714,6 @@ function syncToCurrentState() {
   }
 }
 
-// Visual flash effect
 function flashEffect(color) {
   const flash = document.createElement('div');
   flash.style.position = 'fixed';
@@ -823,5 +735,4 @@ function flashEffect(color) {
   }, 100);
 }
 
-// Initialize on load
 window.addEventListener('DOMContentLoaded', init);

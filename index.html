@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>De Zwakste Schakel — Host Tool</title>
 
-  <!-- Koppel je CSS -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -43,27 +42,37 @@
     Standaard maximum: €15.00
   </div>
 
-          <h3>Finale ronde optie</h3>
+          <h3>Finale-optie</h3>
         <label>Wat gebeurt er bij 2 spelers?</label>
         <select id="twoPlayerMode" style="width:100%; padding:8px; margin-top:6px;">
-          <option value="play">Speel reguliere ronde + Head-to-Head</option>
-          <option value="skip">Direct naar Head-to-Head (geen reguliere ronde)</option>
+          <option value="play">Eerst reguliere ronde, daarna Head-to-Head finale</option>
+          <option value="skip">Direct naar Head-to-Head, reguliere ronde overslaan</option>
         </select>
-        <div style="margin-top:4px; font-size:0.85em; color:#888;">
-          Bij 'Direct naar H2H' wordt de prijzenpot per ronde verhoogd.
-        </div>
 
           <div style="height:8px"></div>
           <h3>Bank-instelling bij ronde-max</h3>
-          <label>Wat moet er gebeuren wanneer het maximaal haalbare bedrag van een ronde bereikt is?</label>
+          <label>Wat moet er gebeuren wanneer het maximaal haalbare bedrag van een ronde bereikt wordt?</label>
           <select id="autoBankMode" style="width:100%; padding:8px; margin-top:6px;">
-            <option value="manual">Handmatig banken (standaard)</option>
-            <option value="auto">Automatisch banken en einde ronde</option>
+            <option value="manual">Speler bankt handmatig, ronde stopt daarna</option>
+            <option value="auto">Spel bankt automatisch, ronde stopt</option>
           </select>
-          <div style="margin-top:4px; font-size:0.85em; color:#888;">
-            Bij 'Automatisch' wordt de ronde direct gebankt en gestopt zodra het ronde-maximum bereikt is.
-          </div>
+<h3>Geldketting Verdeling</h3>
+<label>Kies het type verdeling van de geldketting:</label>
+<select id="chainDistributionMode" style="width:100%; padding:8px; margin-top:6px;">
+  <option value="classic">Klassiek (Constant per ronde)</option>
+  <option value="revival">Revival (Stijgend per ronde)</option>
+</select>
+<div style="height:12px"></div>
+<h3>Startspeler Ronde 1</h3>
+<label>Wie begint de allereerste ronde?</label>
+<select id="firstRoundStartMode" style="width:100%; padding:8px; margin-top:6px;">
+  <option value="alphabetical">Alfabetisch (A-Z)</option>
+  <option value="random">Willekeurige kandidaat</option>
+</select>
+<div style="height:8px"></div>
       </div>
+
+      
 
       <div class="card">
         <div class="round-info">
@@ -111,7 +120,6 @@
   <em>Hier komt de vraag voor de speler...</em>
 </div>
 
-<!-- Head-to-Head container, verborgen totdat nodig -->
 <div id="headToHeadContainer" style="display:none;">
   <h3>Head-to-Head Ronde</h3>
   <div id="firstPlayerSelectArea">
@@ -158,7 +166,6 @@
       </div>
     </div>
 
-  <!-- Koppel je JS -->
   <script src="script.js"></script>
   <script src="quizvragen.js"></script>
 </body>

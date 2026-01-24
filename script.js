@@ -1,10 +1,7 @@
-/* ---------- Beschikbare bedjetijden (uit jouw lijst) ---------- */
 const bedjeFiles = [
   '0：45.mp3','1：00.mp3','1：10.mp3','1：15.mp3','1：20.mp3','1：30.mp3','1：40.mp3','1：45.mp3','1：50.mp3','2：00.mp3','2：10.mp3','2：15.mp3','2：20.mp3','2：30.mp3','2：40.mp3','2：45.mp3','2：50.mp3','3：00.mp3'
 ];
-// We trekken alleen de tijdslabels als minuten:seconds numeriek voor berekeningen
 function parseLabelToSeconds(label){
-  // label is like '1：30.mp3' (note: using U+FF1A fullwidth colon). we'll strip .mp3 and replace non-digit with ':'
   const base = label.replace('.mp3','').replace('：',':');
   const parts = base.split(':');
   const m = parseInt(parts[0],10);
@@ -13,7 +10,6 @@ function parseLabelToSeconds(label){
 }
 const bedjeTimes = bedjeFiles.map(f=>({file:f,secs:parseLabelToSeconds(f)})).sort((a,b)=>a.secs-b.secs);
 
-/* ---------- UI helpers ---------- */
 const numInput = document.getElementById('num');
 const playersInputs = document.getElementById('playersInputs');
 const applyBtn = document.getElementById('applyBtn');
@@ -31,8 +27,7 @@ const wrongBtn = document.getElementById('wrongBtn');
 const rightBtn = document.getElementById('rightBtn');
 const voteArea = document.getElementById('voteArea');
 const eliminateBtn = document.getElementById('eliminateBtn');
-let bedjeAudio; // één gedeelde audioplayer
-// na renderRoundsList(); renderChain(); renderPlayersUI(); updateHeads();
+let bedjeAudio; 
 bedjeAudio = new Audio();
 let inSuddenDeath = false;
 let sdCurrentPlayer = 0; // 0 of 1
@@ -43,34 +38,32 @@ let currentQuestionIndex = 0;
 let currentPlayerForQuestion = null;
 let inHeadToHead = false;
 let globalAudio = new Audio();
-
+let chainDistributionMode = 'classic';
 let players = [];
-let rounds = []; // array of {index, timeSecs, label, bedjeFile}
-let moneyChain = []; // array of numeric euro values
-let currentRound = 0; // 0-based
-let chainAccum = 0.0; // current chain value
+let rounds = []; 
+let moneyChain = []; 
+let currentRound = 0; 
+let chainAccum = 0.0;
 let bankTotal = 0.0;
 let eliminated = [];
 let roundTimerInterval = null;
-let roundTimeLeft = 0; // in seconden
+let roundTimeLeft = 0; 
 let usedQuestions = [];
-let maxTotalAmount = 15.00; // standaard maximaal totaalbedrag
-let chainIndex = 0; // huidige positie in de geldketting
-let currentRoundQuestions = []; // vragen voor de huidige ronde
-let playerAvatars = {}; // opslag voor player avatars (Base64 data URLs)
-let bankTotalAtRoundStart = 0; // referentiepunt voor ronde
-let roundBanked = 0; // hoeveel in deze ronde is gebankt
-let gamePhase = 'setup'; // setup, round_active, voting, h2h_selection, h2h_active
-let twoPlayerMode = 'play'; // 'skip' = direct naar H2H, 'play' = speel reguliere ronde
-let autoBankOnMax = false; // false = require manual bank to end round; true = auto-bank when round max reached
-let candidateVotes = {}; // Track votes from candidate mobile devices
-
-/* ---------- WebSocket voor display synchronisatie ---------- */
+let maxTotalAmount = 15.00; 
+let chainIndex = 0;
+let currentRoundQuestions = []; 
+let playerAvatars = {}; 
+let bankTotalAtRoundStart = 0; 
+let roundBanked = 0; 
+let gamePhase = 'setup'; 
+let twoPlayerMode = 'play'; 
+let autoBankOnMax = false; 
+let candidateVotes = {}; 
+let firstRoundStartMode = 'alphabetical';
 let ws = null;
 let wsConnected = false;
 
 function connectWebSocket() {
-  // Try to connect to WebSocket server
   try {
     ws = new WebSocket('ws://' + window.location.host);
     
@@ -78,7 +71,6 @@ function connectWebSocket() {
       console.log('WebSocket verbonden met server');
       wsConnected = true;
       
-      // Register as host
       ws.send(JSON.stringify({
         type: 'register',
         role: 'host'
@@ -92,7 +84,6 @@ function connectWebSocket() {
       wsConnected = false;
       flashMessage('⚠ Verbinding met server verbroken');
       
-      // Try to reconnect after 3 seconds
       setTimeout(connectWebSocket, 3000);
     };
     
@@ -106,11 +97,9 @@ function connectWebSocket() {
         const data = JSON.parse(event.data);
         console.log('Ontvangen van server:', data.type);
         
-        // Handle messages from server if needed
         if (data.type === 'state_sync') {
           console.log('State sync ontvangen van server');
         } else if (data.type === 'candidate_vote') {
-          // Handle candidate vote from mobile device
           handleCandidateVote(data.voterId, data.votedForId);
         }
       } catch (e) {
@@ -124,7 +113,6 @@ function connectWebSocket() {
 }
 
 function broadcastToDisplay(data) {
-  // Try WebSocket first
   if (wsConnected && ws && ws.readyState === WebSocket.OPEN) {
     try {
       ws.send(JSON.stringify(data));
@@ -135,7 +123,6 @@ function broadcastToDisplay(data) {
     }
   }
   
-  // Fallback to BroadcastChannel for local testing
   try {
     if (!window.localChannel) {
       window.localChannel = new BroadcastChannel('zwakste_schakel');
@@ -147,13 +134,11 @@ function broadcastToDisplay(data) {
 }
 
 function handleCandidateVote(voterId, votedForId) {
-    // Only allow voting during voting phase
     if (gamePhase !== 'voting') {
         console.warn('Candidate vote received outside voting phase');
         return;
     }
 
-    // Validate voter and voted-for players exist and are alive
     const voter = players.find(p => p.id == voterId);
     const votedFor = players.find(p => p.id == votedForId);
 
@@ -162,24 +147,20 @@ function handleCandidateVote(voterId, votedForId) {
         return;
     }
 
-    // Can't vote for yourself
     if (voterId == votedForId) {
         console.warn('Player cannot vote for themselves');
         return;
     }
 
-    // Record the vote
     candidateVotes[voterId] = votedForId;
     console.log(`Candidate vote recorded: ${voter.name} voted for ${votedFor.name}`);
 
-    // Update the UI to show the vote (select the radio button)
     const radioBtn = document.querySelector(`input[name="vote"][value="${votedForId}"]`);
     if (radioBtn) {
         radioBtn.checked = true;
         flashMessage(`Stem ontvangen van ${voter.name} voor ${votedFor.name}`);
     }
 
-    // Check if all candidates have voted
     const alivePlayers = players.filter(p => !p.elim);
     const votesReceived = Object.keys(candidateVotes).length;
     if (votesReceived === alivePlayers.length) {
@@ -187,13 +168,11 @@ function handleCandidateVote(voterId, votedForId) {
     }
 }
 
-// Connect on load
 if (typeof WebSocket !== 'undefined') {
   connectWebSocket();
 }
 
 
-/* populate bedje select */
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -209,7 +188,6 @@ document.getElementById('setMaxTotalBtn').addEventListener('click', () => {
     flashMessage('Voer een geldig positief bedrag in (bijv. 20.00)');
     return;
   }
-  // Altijd afronden op twee cijfers
   maxTotalAmount = Math.round(val * 100) / 100;
 
   document.getElementById('maxTotalDisplay').textContent = 
@@ -219,7 +197,6 @@ document.getElementById('setMaxTotalBtn').addEventListener('click', () => {
 });
 
 
-/* ---------- spelers inputs dynamisch ---------- */
 function renderPlayerInputs(){
   playersInputs.innerHTML = '';
   const n = Math.max(2,Math.min(10,parseInt(numInput.value)||2));
@@ -229,7 +206,6 @@ function renderPlayerInputs(){
     playersInputs.appendChild(inp);
   }
   
-  // Toon foto upload interface
   renderPhotoUpload(n);
 }
 
@@ -246,7 +222,6 @@ function renderPhotoUpload(playerCount){
     const photoCard = document.createElement('div');
     photoCard.className = 'photo-card';
     
-    // Gebruik opgeslagen avatar of standaard
     const avatarSrc = playerAvatars[i] || './assets/avatar.png';
     const hasCustomAvatar = !!playerAvatars[i];
     
@@ -264,23 +239,19 @@ function renderPhotoUpload(playerCount){
     
     photosGrid.appendChild(photoCard);
     
-    // Event listener voor foto upload via knop
     const uploadBtn = photoCard.querySelector(`#upload-btn-${i}`);
     uploadBtn.addEventListener('click', () => {
       document.getElementById(`photo-input-${i}`).click();
     });
     
-    // Event listener voor foto upload via afbeelding klikken
     const avatarImg = photoCard.querySelector(`#avatar-${i}`);
     avatarImg.addEventListener('click', () => {
       document.getElementById(`photo-input-${i}`).click();
     });
     
-    // Event listener voor file input change
     const input = photoCard.querySelector(`#photo-input-${i}`);
     input.addEventListener('change', (e) => handlePhotoUpload(e, i));
     
-    // Event listener voor verwijderen
     if (hasCustomAvatar) {
       const removeBtn = photoCard.querySelector(`#remove-btn-${i}`);
       removeBtn.addEventListener('click', () => removePhotoUpload(i));
@@ -292,7 +263,6 @@ function handlePhotoUpload(event, playerIndex){
   const file = event.target.files[0];
   if(!file) return;
   
-  // Check bestandsgrootte (max 2MB)
   if(file.size > 2 * 1024 * 1024){
     flashMessage(`Foto voor kandidaat ${playerIndex+1} is te groot (max 2MB)`);
     return;
@@ -303,10 +273,8 @@ function handlePhotoUpload(event, playerIndex){
     const dataUrl = e.target.result;
     playerAvatars[playerIndex] = dataUrl;
     
-    // Update preview
     document.getElementById(`avatar-${playerIndex}`).src = dataUrl;
     
-    // Re-render foto upload sectie om verwijder knop toe te voegen
     renderPhotoUpload(Math.max(2, Math.min(10, parseInt(numInput.value) || 2)));
     
     flashMessage(`Foto voor kandidaat ${playerIndex+1} geüpload`);
@@ -318,7 +286,6 @@ function handlePhotoUpload(event, playerIndex){
 function removePhotoUpload(playerIndex){
   delete playerAvatars[playerIndex];
   
-  // Re-render foto upload sectie
   renderPhotoUpload(Math.max(2, Math.min(10, parseInt(numInput.value) || 2)));
   
   flashMessage(`Foto voor kandidaat ${playerIndex+1} verwijderd`);
@@ -327,21 +294,18 @@ function removePhotoUpload(playerIndex){
 numInput.addEventListener('change', renderPlayerInputs);
 renderPlayerInputs();
 
-/* ---------- algoritme: rondetijden bepalen ---------- */
 function chooseStartTimeByPlayers(n){
-  // heuristiek: meer spelers -> langere starttijden
-  if(n>=8) return 180; // 3:00
-  if(n>=6) return 150; // 2:30
-  if(n==5) return 140; // 2:20
-  if(n==4) return 120; // 2:00
-  if(n==3) return 110; // 1:50
-  return 90; // 1:30 for 2 spelers
+  if(n>=8) return 180; 
+  if(n>=6) return 150; 
+  if(n==5) return 140; 
+  if(n==4) return 120; 
+  if(n==3) return 110; 
+  return 90; 
 }
 
 function chooseMinTimeByPlayers(n){
-  // laagste tijd in de reeks — chosen from available bedjes
-  if(n>=8) return 60; // 1:00
-  if(n>=5) return 45; // 0:45
+  if(n>=8) return 60; 
+  if(n>=5) return 45; 
   if(n>=3) return 45;
   return 45;
 }
@@ -351,7 +315,6 @@ function secondsToLabel(s){
 }
 
 function findClosestBedje(secs){
-  // return bedjeTimes element with secs <= desired otherwise the smallest greater
   let candidate = bedjeTimes[0];
   for(const b of bedjeTimes){
     if(b.secs===secs) return b;
@@ -364,14 +327,12 @@ function findClosestBedje(secs){
 function buildRounds(n) {
   const seq = [];
 
-  // Normaal aantal eliminatierondes: tot er 3 spelers zijn
   const roundsNeeded = Math.max(1, n - 2);
 
-  let baseTime = 150 + Math.max(0, n - 8) * 10; // 9→160s, 10→170s
-  if (n < 8) baseTime = 150 - (8 - n) * 10; // 7→140s, 6→130s, etc.
-  baseTime = Math.max(90, Math.min(baseTime, 180)); // begrens tussen 1:30 en 3:00
+  let baseTime = 150 + Math.max(0, n - 8) * 10; 
+  if (n < 8) baseTime = 150 - (8 - n) * 10; 
+  baseTime = Math.max(90, Math.min(baseTime, 180)); 
 
-  // Bouw de eliminatierondes af met 10 seconden minder per ronde
   for (let i = 0; i < roundsNeeded; i++) {
     const secs = baseTime - i * 10;
     const chosen = findClosestBedje(secs);
@@ -384,7 +345,6 @@ function buildRounds(n) {
     });
   }
 
-  // 🆕 Extra gewone ronde met 2 spelers (alleen als twoPlayerMode === 'play')
   if (twoPlayerMode === 'play') {
     const lastNormalSecs = Math.max(60, baseTime - roundsNeeded * 10);
     const extra = findClosestBedje(lastNormalSecs);
@@ -393,11 +353,10 @@ function buildRounds(n) {
       secs: extra.secs,
       label: secondsToLabel(extra.secs) + ' — finale ronde',
       file: extra.file,
-      type: 'normal-final' // nieuw type
+      type: 'normal-final' 
     });
   }
 
-  // Voeg daarna de Head-to-Head toe
   seq.push({
     round: seq.length + 1,
     secs: 0,
@@ -441,67 +400,64 @@ function nextQuestion(){
 }
 
 
-function buildMoneyChain(totalPlayers) {
-  // ✅ Bepaal aantal rondes afhankelijk van twoPlayerMode
-  let roundsCount;
-  if (twoPlayerMode === 'skip') {
-    // Geen reguliere ronde met 2 spelers, dus n-2 rondes (tot 3 spelers over)
-    roundsCount = Math.max(1, totalPlayers - 2);
+function buildMoneyChain() {
+  const chainLength = players.length; 
+  
+  let roundsCount = (twoPlayerMode === 'skip') ? Math.max(1, chainLength - 2) : Math.max(1, chainLength - 1);
+  const maxTotal = maxTotalAmount;
+
+  let baseShape = [];
+  for (let i = 1; i <= chainLength; i++) {
+    baseShape.push(Math.pow(i, 2.2)); 
+  }
+  const topValueInShape = baseShape[baseShape.length - 1];
+
+  let currentRoundTopValue = 0;
+
+  if (chainDistributionMode === 'revival') {
+    let weights = [];
+    
+    const stepEveryRound = (chainLength < 6);
+
+    for (let i = 0; i < roundsCount; i++) {
+      let w;
+      if (i === roundsCount - 1 && roundsCount > 1) {
+      } else {
+        if (stepEveryRound) {
+          w = 1 + i;
+        } else {
+          w = 1 + Math.floor(i / 2);
+        }
+        
+        if (w >= 4) w = 3.5; 
+      }
+      weights.push(w);
+    }
+
+    const totalWeightSum = weights.reduce((a, b) => a + b, 0);
+    const valuePerWeight = maxTotal / totalWeightSum;
+    currentRoundTopValue = weights[currentRound] * valuePerWeight;
   } else {
-    // Wel reguliere ronde met 2 spelers, dus n-1 rondes (tot 2 spelers over)
-    roundsCount = Math.max(1, totalPlayers - 1);
-  }
-  
-  const maxTotal = maxTotalAmount; // totaal te winnen geld in het hele spel
-  const steps = totalPlayers;      // aantal stappen per ronde
-
-  // 📈 Oorspronkelijke schaalvorm (ongeveer) — sterk stijgend aan het einde
-  // Deze waarden worden als "vorm" gebruikt, niet als absolute bedragen.
-  const referenceScale = [20, 50, 100, 200, 300, 450, 600, 800, 1000];
-  
-  // Als minder spelers, verkorten we dynamisch de schaal:
-  const baseShape = referenceScale.slice(0, steps);
-
-  // Normaliseer de som van de basisvorm
-  const shapeSum = baseShape.reduce((a, b) => a + b, 0);
-  const scaleFactor = (maxTotal / roundsCount) / shapeSum;
-
-  // Pas schaal toe zodat het binnen het totaalbedrag per ronde past
-  let scaledSteps = baseShape.map(v => v * scaleFactor);
-
-  // ✅ Cumulatieve bedragen berekenen (zoals de originele ketting)
-  const cumulative = [];
-  let sum = 0;
-  for (let i = 0; i < scaledSteps.length; i++) {
-    sum += scaledSteps[i];
-
-    // 🎯 Slim afronden:
-    // kleine bedragen → op 0,05
-    // middelgrote → op 0,10
-    // grote → op hele euro’s
-    let rounded = sum;
-    if (sum < 1) {
-      rounded = Math.round(sum * 100) / 100; // afronden op 0,01
-      rounded = Math.max(rounded, 0.01); // minimaal €0,01
-    } else if (sum < 10) {
-      rounded = Math.round(sum * 10) / 10; // afronden op 0,10
-    } else {
-      rounded = Math.round(sum); // afronden op hele euro's
-    }
-
-    // Zorg dat afronding het eindbedrag niet overschrijdt
-    if (i === scaledSteps.length - 1) {
-      rounded = sum; // laatste stap blijft exact de maximumwaarde van deze ronde
-    }
-
-    cumulative.push(rounded);
+    currentRoundTopValue = maxTotal / roundsCount;
   }
 
-  return cumulative;
+  const multiplier = currentRoundTopValue / topValueInShape;
+  
+  const chain = baseShape.map((val, idx) => {
+    let scaled = val * multiplier;
+
+    if (idx === chainLength - 1) return Math.round(scaled * 100) / 100;
+
+    if (scaled >= 100) return Math.round(scaled / 5) * 5;
+    if (scaled >= 10) return Math.round(scaled);
+    if (scaled >= 1) return Math.round(scaled * 2) / 2; 
+    return Math.round(scaled * 10) / 10;
+  });
+
+  return chain;
 }
 
 
-/* ---------- render helpers ---------- */
 function renderRoundsList(){
   roundsList.innerHTML = '';
   rounds.forEach(r=>{
@@ -533,7 +489,6 @@ function renderPlayersUI(){
     const info = document.createElement('div');
     info.className='muted';
 
-    // ✅ toon stats voor de huidige ronde (of 0 als niet gezet)
     const stats = p.roundStats[currentRound] || {correct:0, wrong:0, banked:0};
     info.textContent = `Goed: ${stats.correct}, Fout: ${stats.wrong}, Gebankt: ${stats.banked}`;
 
@@ -577,7 +532,7 @@ function updateSuddenDeathUI(){
   currentRoundLabel.textContent = `Sudden death — ${finalists[0].name}: ${sdScores[0]} / ${sdQuestions[0]} — ${finalists[1].name}: ${sdScores[1]} / ${sdQuestions[1]}`;
 }
 
-function flashMessage(msg, duration = 5000) { // standaard nu 5 seconden
+function flashMessage(msg, duration = 5000) { 
   const container = document.getElementById('flashContainer');
   if(!container) return;
 
@@ -587,12 +542,11 @@ function flashMessage(msg, duration = 5000) { // standaard nu 5 seconden
 
   container.appendChild(div);
 
-  // start fade-out vlak voordat de timeout afgelopen is
   setTimeout(() => {
     div.style.transition = 'opacity 0.5s ease-in-out';
     div.style.opacity = 0;
-    setTimeout(() => container.removeChild(div), 500); // verwijder na fade
-  }, duration - 500); // 0.5s fade-out
+    setTimeout(() => container.removeChild(div), 500); 
+  }, duration - 500); 
 }
 
 
@@ -602,40 +556,32 @@ function getStrongestAndWeakest(roundIndex) {
 
     const roundStats = p => p.roundStats[roundIndex] || {correct:0, wrong:0, banked:0};
 
-    // --- Sterkste schakel ---
     let maxCorrect = Math.max(...alive.map(p => roundStats(p).correct));
     let strongest = alive.filter(p => roundStats(p).correct === maxCorrect);
     if(strongest.length > 1){
-        // tie-break: minste fouten
         let minWrong = Math.min(...strongest.map(p => roundStats(p).wrong));
         strongest = strongest.filter(p => roundStats(p).wrong === minWrong);
     }
     if(strongest.length > 1){
-        // tie-break: minste gebankt
         let minBanked = Math.min(...strongest.map(p => roundStats(p).banked));
         strongest = strongest.filter(p => roundStats(p).banked === minBanked);
     }
     if(strongest.length > 1){
-        // tie-break: alfabet
         strongest.sort((a,b)=>a.name.localeCompare(b.name));
     }
     const strongestPlayer = strongest[0];
 
-    // --- Zwakste schakel ---
     let minCorrect = Math.min(...alive.map(p => roundStats(p).correct));
     let weakest = alive.filter(p => roundStats(p).correct === minCorrect);
     if(weakest.length > 1){
-        // tie-break: meeste fouten
         let maxWrong = Math.max(...weakest.map(p => roundStats(p).wrong));
         weakest = weakest.filter(p => roundStats(p).wrong === maxWrong);
     }
     if(weakest.length > 1){
-        // tie-break: meeste gebankt
         let maxBanked = Math.max(...weakest.map(p => roundStats(p).banked));
         weakest = weakest.filter(p => roundStats(p).banked === maxBanked);
     }
     if(weakest.length > 1){
-        // tie-break: alfabet
         weakest.sort((a,b)=>a.name.localeCompare(b.name));
     }
     const weakestPlayer = weakest[0];
@@ -643,11 +589,6 @@ function getStrongestAndWeakest(roundIndex) {
     return {strongest: strongestPlayer, weakest: weakestPlayer};
 }
 
-/* --------------------  NIEUW: real-time sterkste/zwakste -------------------- */
-
-/**
- * Bereken de sterkste en zwakste schakel voor de huidige ronde
- */
 function calculateStrongestAndWeakest(roundIndex) {
   const alive = players.filter(p => !p.elim);
   if (alive.length === 0) return { strongest: null, weakest: null };
@@ -656,32 +597,27 @@ function calculateStrongestAndWeakest(roundIndex) {
     return p.roundStats[roundIndex] || { correct: 0, wrong: 0, banked: 0 };
   }
 
-  // --- Sterkste schakel ---
   const strongest = [...alive].sort((a, b) => {
     const sa = stats(a);
     const sb = stats(b);
-    if (sb.correct !== sa.correct) return sb.correct - sa.correct; // meest goed
-    if (sa.wrong !== sb.wrong) return sa.wrong - sb.wrong;         // minst fout
-    if (sa.banked !== sb.banked) return sa.banked - sb.banked;     // minst bank
-    return a.name.localeCompare(b.name);                           // alfabetisch
+    if (sb.correct !== sa.correct) return sb.correct - sa.correct; 
+    if (sa.wrong !== sb.wrong) return sa.wrong - sb.wrong;         
+    if (sa.banked !== sb.banked) return sa.banked - sb.banked;     
+    return a.name.localeCompare(b.name);                           
   })[0];
 
-  // --- Zwakste schakel ---
   const weakest = [...alive].sort((a, b) => {
     const sa = stats(a);
     const sb = stats(b);
-    if (sa.correct !== sb.correct) return sa.correct - sb.correct; // minst goed
-    if (sb.wrong !== sa.wrong) return sb.wrong - sa.wrong;         // meest fout
-    if (sb.banked !== sa.banked) return sb.banked - sa.banked;     // meest bank
-    return a.name.localeCompare(b.name);                           // alfabetisch
+    if (sa.correct !== sb.correct) return sa.correct - sb.correct; 
+    if (sb.wrong !== sa.wrong) return sb.wrong - sa.wrong;         
+    if (sb.banked !== sa.banked) return sb.banked - sa.banked;     
+    return a.name.localeCompare(b.name);                           
   })[0];
 
   return { strongest, weakest };
 }
 
-/**
- * Toon de huidige sterkste en zwakste schakel in de UI
- */
 function renderStrongestWeakest(roundIndex = currentRound) {
   const div = document.getElementById("strongestWeakest");
   if (!div) return;
@@ -703,9 +639,6 @@ function renderStrongestWeakest(roundIndex = currentRound) {
   `;
 }
 
-/**
- * Update de statistieken van een speler en herbereken direct sterkste/zwakste.
- */
 function updateStatsAndStrongWeak(player, type) {
   player.roundStats = player.roundStats || {};
   player.roundStats[currentRound] = player.roundStats[currentRound] || { correct: 0, wrong: 0, banked: 0 };
@@ -727,16 +660,18 @@ function updateStatsAndStrongWeak(player, type) {
 }
 
 
-
-/* ---------- core actions ---------- */
 applyBtn.addEventListener('click', ()=>{
     const n = Math.max(2, Math.min(10, parseInt(numInput.value) || 2));
     
-    // Lees de twoPlayerMode dropdown
     const twoPlayerModeSelect = document.getElementById('twoPlayerMode');
     twoPlayerMode = twoPlayerModeSelect ? twoPlayerModeSelect.value : 'play';
 
-    // Lees de auto-bank modus (manual | auto)
+    const startModeSelect = document.getElementById('firstRoundStartMode');
+firstRoundStartMode = startModeSelect ? startModeSelect.value : 'alphabetical';
+
+    const distSelect = document.getElementById('chainDistributionMode');
+    chainDistributionMode = distSelect ? distSelect.value : 'classic';
+
     const autoBankSelect = document.getElementById('autoBankMode');
     const autoMode = autoBankSelect ? autoBankSelect.value : 'manual';
     autoBankOnMax = (autoMode === 'auto');
@@ -749,8 +684,8 @@ applyBtn.addEventListener('click', ()=>{
           id:i, 
           name:name, 
           elim:false,
-          roundStats:{}, // voor statistieken per ronde
-          avatar: playerAvatars[i] || './assets/avatar.png' // profielfoto
+          roundStats:{}, 
+          avatar: playerAvatars[i] || './assets/avatar.png' 
         });
     }
     playerCountSpan.textContent = players.length;
@@ -762,7 +697,6 @@ applyBtn.addEventListener('click', ()=>{
     eliminated = [];
     gamePhase = 'setup';
 
-    // ✅ shuffle de vragen hier
     if(quizQuestions && quizQuestions.length > 1){
         shuffleArray(quizQuestions);
     }
@@ -773,7 +707,6 @@ applyBtn.addEventListener('click', ()=>{
     updateHeads();
     updateButtonVisibility();
     
-    // Broadcast naar display
     broadcastToDisplay({
         type: 'game_created',
         players: players,
@@ -800,7 +733,6 @@ function updateHeads(){
     bankTotalEl.textContent = `€${bankTotal.toFixed(2)}`;
     chainValueEl.textContent = `€${chainAccum.toFixed(2)}`;
 
-    // 🆕 Update overlay
     if(window.MoneyChainOverlay) {
         updateOverlay({
             currentRound,
@@ -825,7 +757,6 @@ startRoundBtn.addEventListener('click', ()=>{
 
     startNormalRound(r);
     
-    // Broadcast naar display
     broadcastToDisplay({
         type: 'round_started',
         round: currentRound,
@@ -837,11 +768,9 @@ startRoundBtn.addEventListener('click', ()=>{
 
 
 function startNormalRound(r){
-    // kies een aantal vragen voor deze ronde (bijvoorbeeld aantal actieve spelers of 5)
     const numQuestions = 50;
     const questionsForRound = getNewQuestions(numQuestions);
 
-    // sla lokaal op zodat showQuestion ze kan gebruiken
     currentRoundQuestions = questionsForRound;
     currentQuestionIndex = 0;
 
@@ -851,7 +780,7 @@ function startNormalRound(r){
     bedjeAudio.currentTime = 0;
     bedjeAudio.play().catch(()=>{});
 
-    moneyChain = buildMoneyChain(players.length);
+    moneyChain = buildMoneyChain(players.filter(p => !p.elim).length + 1); // Bereken nieuwe ketting
     renderChain();
     sendChainToOverlay();
     chainAccum = 0; chainIndex = 0;
@@ -869,16 +798,6 @@ function startNormalRound(r){
 }
 
 
-
-
-
-
-
-
-// Verwijderd: dubbele definitie van showNextHeadToHeadQuestion met onjuiste Sudden Death start
-
-
-
 function showNextHeadToHeadQuestion() {
     const finalists = players.filter(p => !p.elim);
     if(finalists.length !== 2) return;
@@ -894,7 +813,6 @@ function showNextHeadToHeadQuestion() {
 
     updateHeadToHeadScoresUI();
     
-    // Broadcast naar display
     broadcastToDisplay({
         type: 'h2h_question',
         question: q.question,
@@ -902,18 +820,15 @@ function showNextHeadToHeadQuestion() {
     });
 }
 
-// Behandeling bij juist antwoord
 function h2hRight() {
     const finalists = players.filter(p => !p.elim);
 
     if(inSuddenDeath){
-        sdScores[sdCurrentPlayer]++; // optioneel bijhouden
+        sdScores[sdCurrentPlayer]++; 
         sdQuestions[sdCurrentPlayer]++;
 
-        // In Sudden Death: juiste antwoord → beurt naar andere speler
         sdCurrentPlayer = sdCurrentPlayer === 0 ? 1 : 0;
         
-        // Broadcast scores naar display
         broadcastToDisplay({
             type: 'h2h_score',
             scores: sdScores
@@ -923,11 +838,9 @@ function h2hRight() {
         return;
     }
 
-    // Normale head-to-head (eerste 5 vragen)
     sdScores[sdCurrentPlayer]++;
     sdQuestions[sdCurrentPlayer]++;
     
-    // Broadcast scores naar display
     broadcastToDisplay({
         type: 'h2h_score',
         scores: sdScores
@@ -936,20 +849,16 @@ function h2hRight() {
     checkHeadToHeadProgress();
 }
 
-// Behandeling bij fout antwoord
 function h2hWrong() {
     const finalists = players.filter(p => !p.elim);
 
     if(!inSuddenDeath && sdQuestions[0] >=5 && sdQuestions[1] >=5){
-        // dit zou normaal niet voorkomen
         return;
     }
 
     if(!inSuddenDeath && sdQuestions[0] >=0 && sdQuestions[1] >=0){
-        // Na reguliere H2H vragen
         sdQuestions[sdCurrentPlayer]++;
         
-        // Broadcast scores naar display
         broadcastToDisplay({
             type: 'h2h_score',
             scores: sdScores
@@ -959,7 +868,6 @@ function h2hWrong() {
         return;
     }
 
-    // Sudden Death: fout = verlies
     if(inSuddenDeath){
         const loser = finalists[sdCurrentPlayer];
         const winner = finalists[sdCurrentPlayer === 0 ? 1 : 0];
@@ -967,10 +875,8 @@ function h2hWrong() {
         return;
     }
 
-    // Normale beurt: vraag fout
     sdQuestions[sdCurrentPlayer]++;
     
-    // Broadcast scores naar display
     broadcastToDisplay({
         type: 'h2h_score',
         scores: sdScores
@@ -980,7 +886,6 @@ function h2hWrong() {
     showNextHeadToHeadQuestion();
 }
 
-// Start Sudden Death
 function startSuddenDeath() {
     const finalists = players.filter(p=>!p.elim);
     if(finalists.length !== 2){
@@ -1001,13 +906,10 @@ function startSuddenDeath() {
     showNextHeadToHeadQuestion();
 }
 
-
-// Controleer voortgang en bepaal winnaar / Sudden Death
 function checkHeadToHeadProgress() {
     const finalists = players.filter(p => !p.elim);
 
     if(!inSuddenDeath){
-        // 5 vragen per speler voltooid?
         if(sdQuestions[0] >=5 && sdQuestions[1] >=5){
             if(sdScores[0] > sdScores[1]){
                 declareWinner(finalists[0]);
@@ -1016,18 +918,15 @@ function checkHeadToHeadProgress() {
                 declareWinner(finalists[1]);
                 return;
             } else {
-                // start Sudden Death
                 inSuddenDeath = true;
-                sdQuestions = [0,0]; // reset vragen tellen
+                sdQuestions = [0,0]; 
                 flashMessage('Gelijkspel! Sudden Death start!');
             }
         }
     } else {
-        // Sudden Death logica
         if(sdQuestions[0] > 0 && sdQuestions[1] > 0){
             const last0 = sdScores[0];
             const last1 = sdScores[1];
-            // verschil tussen laatste beurt checken
             if(Math.abs(last0 - last1) === 1){
                 const winner = last0 > last1 ? finalists[0] : finalists[1];
                 declareWinner(winner);
@@ -1036,7 +935,6 @@ function checkHeadToHeadProgress() {
         }
     }
 
-    // switch beurt
     sdCurrentPlayer = sdCurrentPlayer === 0 ? 1 : 0;
     showNextHeadToHeadQuestion();
 }
@@ -1047,38 +945,31 @@ function declareWinner(player){
     inSuddenDeath = false;
     gamePhase = 'setup';
 
-    // stop eventuele andere muziek
     if(bedjeAudio && !bedjeAudio.paused){
         bedjeAudio.pause();
         bedjeAudio.currentTime = 0;
     }
 
-  // Verberg H2H UI expliciet
   const h2hContainer = document.getElementById('headToHeadContainer');
   if (h2hContainer) h2hContainer.style.display = 'none';
 
-  // Speel winnaarsmuziek (probeer een reeks bekende bestandsnamen, val terug op start sting)
   playWinnerMusic();
     
-    // Broadcast winnaar naar display
     broadcastToDisplay({
         type: 'game_winner',
         winner: player,
         prize: bankTotal
     });
 
-    // toon normale UI weer
     showRegularUI();
 }
 
 function playWinnerMusic() {
-  // Speel expliciet de winnaarsmuziek
   const player = effectAudio || new Audio();
   player.pause();
   player.currentTime = 0;
   player.src = "./soundtrack/Winner's Theme.mp3";
   player.play().catch(() => {
-    // Fallbacks indien bestand ontbreekt
     const fallbacks = [
       './soundtrack/Main Sting.mp3',
       './soundtrack/Head to Head Start Sting.mp3'
@@ -1115,12 +1006,10 @@ function checkSuddenDeathProgress(){
   updateSuddenDeathUI();
 
   if(sdQuestions[sdCurrentPlayer] >= 5){
-    // speler is klaar, switch naar andere
     sdCurrentPlayer = (sdCurrentPlayer === 0 ? 1 : 0);
   }
 
   if(sdQuestions[0] >= 5 && sdQuestions[1] >= 5){
-    // einde
     inSuddenDeath = false;
     const [s1, s2] = sdScores;
     let msg = `Einde Sudden Death!\n\n${finalists[0].name}: ${s1} goed\n${finalists[1].name}: ${s2} goed\n\n`;
@@ -1133,23 +1022,32 @@ function checkSuddenDeathProgress(){
   }
 }
 
-function determineFirstPlayer(roundIndex){
-    const alive = players.filter(p => !p.elim);
-
-    if(roundIndex === 0){
-        alive.sort((a,b)=>a.name.localeCompare(b.name));
-        return alive[0];
+function determineFirstPlayer(roundIdx) {
+  const alivePlayers = players.filter(p => !p.elim);
+  
+  // Ronde 1 (index 0)
+  if (roundIdx === 0) {
+    if (firstRoundStartMode === 'random') {
+      const randomIndex = Math.floor(Math.random() * alivePlayers.length);
+      return alivePlayers[randomIndex];
+    } else {
+      // Sorteer alfabetisch op naam en kies de eerste
+      return [...alivePlayers].sort((a, b) => a.name.localeCompare(b.name))[0];
     }
+  }
 
-    // Sterkste schakel vorige ronde
-    const {strongest} = getStrongestAndWeakest(roundIndex - 1);
-    return strongest || alive[0];
+  // Latere rondes: De sterkste schakel van de vorige ronde begint
+  const { strongest } = calculateStrongestAndWeakest(roundIdx - 1);
+  
+  // Als de sterkste is weggestemd (niet meer 'alive'), 
+  // dan valt de logica van calculateStrongestAndWeakest meestal al terug 
+  // op de eerstvolgende beste speler die nog in het spel zit.
+  return strongest || alivePlayers[0];
 }
 
 
 
 function hideRegularUI() {
-    // Verberg alles wat alleen relevant is voor normale rondes
     document.getElementById('playersInputs').style.display = 'none';
     document.getElementById('roundsList').style.display = 'none';
     document.getElementById('moneyChain').style.display = 'none';
@@ -1178,7 +1076,6 @@ function showRegularUI() {
     updateButtonVisibility();
 }
 
-// Beheer zichtbaarheid knoppen op basis van game-state
 function updateButtonVisibility() {
     const gameStarted = rounds.length > 0;
     const inVoting = gamePhase === 'voting';
@@ -1186,28 +1083,23 @@ function updateButtonVisibility() {
     const roundActive = gamePhase === 'round_active';
     const roundReady = gamePhase === 'round_ready';
     
-    // Toon quiz-knoppen (Goed/Fout/Bank) ALLEEN tijdens actieve ronde
     const showQuizButtons = roundActive;
     rightBtn.style.display = showQuizButtons ? 'inline-block' : 'none';
     wrongBtn.style.display = showQuizButtons ? 'inline-block' : 'none';
     bankBtn.style.display = showQuizButtons ? 'inline-block' : 'none';
     
-    // Toon elimineer-knop ALLEEN in voting fase EN NIET in de finale ronde
     const isFinaleRound = rounds[currentRound] && rounds[currentRound].type === 'normal-final';
     const showEliminateBtn = inVoting && !isFinaleRound;
     eliminateBtn.style.display = showEliminateBtn ? 'inline-block' : 'none';
     
-    // Toon Start Ronde: spel moet zijn gestart EN we mogen NIET in H2H zijn EN (setup of na eliminatie of rond klaar)
     const showStartRound = gameStarted && !inH2H && (gamePhase === 'setup' || gamePhase === 'voting' || gamePhase === 'round_ready');
     startRoundBtn.style.display = showStartRound ? 'inline-block' : 'none';
     
-    // Toon Volgende Ronde: ALLEEN na voting fase
     const showNextRound = gameStarted && gamePhase === 'voting' && !inH2H;
     nextRoundBtn.style.display = showNextRound ? 'inline-block' : 'none';
 }
 
 function getNewQuestions(num){
-    // filter de vragen die nog niet gebruikt zijn
     const remaining = quizQuestions.filter(q => !usedQuestions.includes(q));
     
     if(remaining.length < num){
@@ -1215,18 +1107,15 @@ function getNewQuestions(num){
         return remaining;
     }
 
-    // shuffle de overgebleven vragen
     const shuffled = shuffleArray([...remaining]);
     const selected = shuffled.slice(0, num);
 
-    // markeer ze als gebruikt
     usedQuestions.push(...selected);
 
     return selected;
 }
 
 
-// Bepaal volgende speler (alfabetisch, actieve spelers)
 function getNextPlayer(currentPlayer){
     const alive = players.filter(p => !p.elim).sort((a,b)=>a.name.localeCompare(b.name));
     let idx = alive.findIndex(p => p.id === currentPlayer.id);
@@ -1234,7 +1123,6 @@ function getNextPlayer(currentPlayer){
     return alive[idx];
 }
 
-// Toon een vraag in de HTML inclusief de spelernaam
 function showQuestion(player){
     if(!currentRoundQuestions || currentRoundQuestions.length === 0) return;
     currentPlayerForQuestion = player;
@@ -1245,7 +1133,6 @@ function showQuestion(player){
     const displayArea = document.getElementById('currentQuestion');
     displayArea.innerHTML = `<strong>${player.name}</strong>, jouw vraag:<br>${q.question}<br><em>Antwoord(en): ${q.answers.join(' / ')}</em>`;
     
-    // Broadcast naar display
     broadcastToDisplay({
         type: 'question_changed',
         player: player,
@@ -1263,8 +1150,6 @@ nextRoundBtn.addEventListener('click', () => {
   const r = rounds[currentRound];
   const eliminationDone = r.eliminationDone || false;
 
-  // Bij een gewone ronde moet eerst geëlimineerd worden (zolang er >2 spelers zijn)
-  // Tenzij we in skip-mode zitten en er zijn precies 2 spelers over
   const needsElimination = r.type === 'normal' && !eliminationDone && aliveCount > 2;
   const skipToH2H = (twoPlayerMode === 'skip' && aliveCount === 2);
   
@@ -1272,12 +1157,10 @@ nextRoundBtn.addEventListener('click', () => {
     return flashMessage('Je moet eerst een speler elimineren voordat je naar de volgende ronde kunt.');
   }
 
-  // Laatste ronde bereikt?
   if(currentRound >= rounds.length - 1) {
     return flashMessage('Je zit al in de laatste ronde.');
   }
 
-  // Stop eventuele lopende timer/bedje van de vorige ronde
   clearInterval(roundTimerInterval);
   roundTimerInterval = null;
   if(bedjeAudio && !bedjeAudio.paused){
@@ -1285,14 +1168,12 @@ nextRoundBtn.addEventListener('click', () => {
     bedjeAudio.currentTime = 0;
   }
 
-  // Reset tijdelijke ronde-data
   chainAccum = 0.0;
   chainIndex = 0;
   currentRoundQuestions = [];
   currentQuestionIndex = 0;
   currentPlayerForQuestion = null;
 
-  // Zet alleen de volgende ronde klaar; start pas bij "Start ronde"
   currentRound++;
   gamePhase = 'round_ready';
   renderPlayersUI();
@@ -1300,7 +1181,6 @@ nextRoundBtn.addEventListener('click', () => {
 
   const upcoming = rounds[currentRound];
   
-  // Broadcast naar display dat ronde klaar is
   broadcastToDisplay({
       type: 'round_ready',
       round: currentRound
@@ -1329,27 +1209,22 @@ function startHeadToHeadSelection() {
   const {strongest} = getStrongestAndWeakest(prevRoundIndex);
   const strongestName = strongest ? strongest.name : 'Sterkste schakel';
 
-  // Meld aan display dat de keuze voor de startspeler bezig is
   broadcastToDisplay({
     type: 'h2h_selection',
     finalists,
     strongestName
   });
 
-    // Verberg normale UI
     hideRegularUI();
 
-    // Toon Head-to-Head container
     const container = document.getElementById('headToHeadContainer');
     container.style.display = 'block';
 
-    // Speel Start Sting
     if(!bedjeAudio) bedjeAudio = new Audio();
     bedjeAudio.src = './soundtrack/Head to Head Start Sting.mp3';
     bedjeAudio.currentTime = 0;
     bedjeAudio.play().catch(()=>{});
 
-    // Vul select
     const select = document.getElementById('firstPlayerSelect');
     select.innerHTML = '';
     finalists.forEach(p => {
@@ -1359,41 +1234,35 @@ function startHeadToHeadSelection() {
         select.appendChild(opt);
     });
 
-    // Bevestig knop
     const confirmBtn = document.getElementById('confirmFirstPlayerBtn');
     confirmBtn.onclick = () => {
         const chosenId = parseInt(select.value, 10);
         sdCurrentPlayer = finalists.findIndex(p => p.id === chosenId);
 
-        // Verberg selectie, toon vraaggebied
         document.getElementById('firstPlayerSelectArea').style.display = 'none';
         document.getElementById('h2hQuestionArea').style.display = 'block';
 
-        // Stop Start Sting en start ronde muziek
         bedjeAudio.pause();
         bedjeAudio.currentTime = 0;
         bedjeAudio.src = './soundtrack/Head to Head.mp3';
-        bedjeAudio.loop = true; // blijft herhalen
+        bedjeAudio.loop = true; 
         bedjeAudio.play().catch(()=>{});
 
-            currentRoundQuestions = getNewQuestions(5); // 5 H2H vragen
+            currentRoundQuestions = getNewQuestions(5); 
     currentQuestionIndex = 0;
 
-        // reset scores
         sdScores = [0,0];
         sdQuestions = [0,0];
         currentQuestionIndex = 0;
         gamePhase = 'h2h_active';
         updateSuddenDeathUI();
 
-        // Broadcast naar display
         broadcastToDisplay({
             type: 'headtohead_started',
           finalists: finalists,
           starter: sdCurrentPlayer
         });
 
-        // start ronde
         showNextHeadToHeadQuestion();
     };
     
@@ -1408,7 +1277,6 @@ function startHeadToHeadSelection() {
 
 rightBtn.addEventListener('click', () => {
   if (inHeadToHead) {
-    // Gebruik de centrale H2H logica zodat winst/tie-break correct wordt afgehandeld
     h2hRight();
     return;
   }
@@ -1416,14 +1284,13 @@ rightBtn.addEventListener('click', () => {
   if (!currentPlayerForQuestion) return;
 
   if (chainIndex < moneyChain.length) {
-    chainAccum = moneyChain[chainIndex]; // cumulatieve waarde
+    chainAccum = moneyChain[chainIndex]; 
     chainIndex++;
-    updateOverlayChain(chainIndex); // update overlay
+    updateOverlayChain(chainIndex); 
   }
 
   if (chainIndex >= moneyChain.length) {
     if (autoBankOnMax) {
-      // automatisch bank uitvoeren en ronde laten eindigen (bankBtn handler regelt ronde-einde)
       bankBtn.click();
       return;
     } else {
@@ -1433,7 +1300,6 @@ rightBtn.addEventListener('click', () => {
 
   updateHeads();
   
-  // Broadcast naar display
   broadcastToDisplay({
       type: 'answer_correct'
   });
@@ -1449,7 +1315,6 @@ rightBtn.addEventListener('click', () => {
 
 wrongBtn.addEventListener('click', ()=>{
   if(inHeadToHead){
-    // Gebruik de centrale H2H logica zodat winst/tie-break correct wordt afgehandeld
     h2hWrong();
     return;
   }
@@ -1460,7 +1325,6 @@ wrongBtn.addEventListener('click', ()=>{
   chainIndex = 0;
   updateHeads();
   
-  // Broadcast naar display
   broadcastToDisplay({
       type: 'answer_wrong'
   });
@@ -1480,39 +1344,29 @@ wrongBtn.addEventListener('click', ()=>{
 bankBtn.addEventListener('click', () => {
     if (!currentPlayerForQuestion) return;
 
-    // Bereken het maximaal te bankenn bedrag deze ronde
     const maxChainValue = Math.max(...moneyChain);
     const remainingCapacity = Math.max(0, Math.round((maxChainValue - roundBanked) * 100) / 100);
 
     if (remainingCapacity <= 0) {
-        // Al op max voor deze ronde
         flashMessage('Het maximale bedrag voor deze ronde is al bereikt.');
         return;
     }
 
-    // Bepaal hoeveel we daadwerkelijk kunnen bankenn (cap op per-ronde maximum)
     const toBank = Math.min(chainAccum, remainingCapacity);
     if (toBank <= 0) return;
 
 
     const previousTotal = bankTotal;
-    // bewaar vorige waarde voor controle of we juist de ketting-top hebben bereikt
     const prevRoundBanked = roundBanked;
     bankTotal = Math.round((bankTotal + toBank) * 100) / 100;
     roundBanked = Math.round((roundBanked + toBank) * 100) / 100;
 
-    // Broadcast naar display met exact bedrag
     broadcastToDisplay({
         type: 'bank',
         amount: toBank
     });
 
-    // Controle of deze ronde het maximum van de ketting heeft bereikt
-    // Alleen einde ronde wanneer de speler die nu bankt daadwerkelijk de ketting-top had gehaald
-    // (dus zijn huidige `chainAccum` bevat de topstap). Zo voorkomen we dat meerdere kleine
-    // bankacties samen de ronde laten eindigen wanneer geen enkele speler de top zelf heeft bereikt.
     if (chainAccum >= maxChainValue && prevRoundBanked < maxChainValue && roundBanked >= maxChainValue) {
-      // Clamp totale pot op het spelmaximum
       bankTotal = Math.min(bankTotal, maxTotalAmount);
       clearInterval(roundTimerInterval);
       if (bedjeAudio && !bedjeAudio.paused) {
@@ -1525,7 +1379,6 @@ bankBtn.addEventListener('click', () => {
 
       flashMessage(`💰 Ronde-max bereikt: (€${previousTotal.toFixed(2)} + €${toBank.toFixed(2)}) tot €${roundBanked.toFixed(2)} — ronde eindigt!`);
 
-      // Broadcast naar display dat ronde-max is bereikt
       broadcastToDisplay({ type: 'bank_max' });
 
       chainAccum = 0.0;
@@ -1536,15 +1389,12 @@ bankBtn.addEventListener('click', () => {
       return;
     }
 
-    // Normale logica als het maximum niet is overschreden
     bankTotal = Math.min(bankTotal, maxTotalAmount);
-    // Als we slechts deels konden bankenn, we resetten chainAccum volledig
     chainAccum = 0.0;
     chainIndex = 0;
     updateHeads();
     updateStatsAndStrongWeak(currentPlayerForQuestion, "banked");
 
-    // Bank wisselt NIET van speler - blijf bij huidige speler
     showQuestion(currentPlayerForQuestion);
 
     updateButtonVisibility();
@@ -1562,7 +1412,6 @@ eliminateBtn.addEventListener('click', () => {
     const p = players.find(x=>x.id===id);
     if(!p) return;
     
-    // 🆕 Check: Kan niet elimineren in de finale ronde (2 spelers)
     const r = rounds[currentRound];
     if(r && r.type === 'normal-final') {
         return flashMessage('Dit is de finale ronde — geen eliminatie nodig! Ga naar Head-to-Head.');
@@ -1572,7 +1421,6 @@ eliminateBtn.addEventListener('click', () => {
     eliminated.push(p.name);
     renderPlayersUI();
 
-    // markeer eliminatie in deze ronde
     rounds[currentRound].eliminationDone = true;
     eliminateBtn.disabled = true;
 
@@ -1585,7 +1433,6 @@ eliminateBtn.addEventListener('click', () => {
         flashMessage(`${p.name} is geëlimineerd. Klik op "Volgende ronde" om door te gaan.`);
     }
 
-    // 🆕 toon statistieken bij elke actieve speler
     const voteCards = document.querySelectorAll('#voteArea .player-card');
     voteCards.forEach(card => {
         const pid = parseInt(card.querySelector('input').value, 10);
@@ -1599,13 +1446,11 @@ eliminateBtn.addEventListener('click', () => {
 
     updateHeads();
     
-    // Broadcast naar display
     broadcastToDisplay({
         type: 'player_eliminated',
         playerName: p.name
     });
 
-    // Broadcast voting ended to candidates
     broadcastToDisplay({
         type: 'voting_ended'
     });
@@ -1614,27 +1459,22 @@ eliminateBtn.addEventListener('click', () => {
 });
 
 document.getElementById('IntroBtn').addEventListener('click', () => {
-    // Stop huidige muziek en speel Intro
     playSound('./soundtrack/Intro.mp3', {loop:false});
 });
 
 document.getElementById('ShortStingBtn').addEventListener('click', () => {
-    // Stop huidige muziek en speel Short Sting
     playSound('./soundtrack/Short Sting.mp3', {loop:false});
 });
 
 document.getElementById('GeneralBedBtn').addEventListener('click', () => {
-    // Stop huidige muziek en speel General Bed
     playSound('./soundtrack/General Bed.mp3', {loop:false});
 });
 
 document.getElementById('afterInterviewBtn').addEventListener('click', () => {
-    // Stop huidige muziek en speel After Interview Sting
     playSound('./soundtrack/After Interview Sting.wav', {loop:false});
 });
 
 document.getElementById('generalBumper').addEventListener('click', () => {
-    // Stop huidige muziek en speel Main Sting
     playSound('./soundtrack/Main Sting.mp3', {loop:false});
 });
 
@@ -1648,10 +1488,8 @@ function updatePlayerCard(player){
 }
 
 document.getElementById('startVotingBtn').addEventListener('click', () => {
-    // Reset candidate votes for new voting round
     candidateVotes = {};
 
-    // Stop andere muziek en speel Voting Music (één keer)
     playSound('./soundtrack/Voting Music.mp3', {loop:false});
 
     votingTimeLeft = 25;
@@ -1662,7 +1500,6 @@ document.getElementById('startVotingBtn').addEventListener('click', () => {
         votingTimeLeft--;
         updateVotingTimerDisplay();
         
-        // Broadcast timer update naar display
         broadcastToDisplay({
             type: 'voting_timer',
             time: votingTimeLeft
@@ -1672,14 +1509,12 @@ document.getElementById('startVotingBtn').addEventListener('click', () => {
             clearInterval(votingInterval);
             flashMessage('Stemmen afgelopen!');
 
-            // Broadcast voting ended to candidates
             broadcastToDisplay({
                 type: 'voting_ended'
             });
         }
     }, 1000);
     
-    // Broadcast voting started met statistieken
     const alive = players.filter(p => !p.elim);
     const stats = alive.map(p => {
         const roundStats = p.roundStats[currentRound] || {correct:0, wrong:0, banked:0};
@@ -1697,7 +1532,7 @@ document.getElementById('startVotingBtn').addEventListener('click', () => {
     broadcastToDisplay({
         type: 'voting_started',
         time: votingTimeLeft,
-        players: alive, // Send full player objects for candidate voting
+        players: alive, 
         stats: {
             players: stats,
             strongest: result.strongest,
@@ -1716,37 +1551,31 @@ function updateVotingTimerDisplay() {
 }
 
 
-/* keyboard shortcuts (host convenience) */
 document.addEventListener('keydown', (e)=>{
   if(e.key==='b') bankBtn.click();
   if(e.key==='g') rightBtn.click();
   if(e.key==='f') wrongBtn.click();
 });
 
-// Communicatie met overlay
 const bc = new BroadcastChannel('moneyChainChannel');
 
-// Nieuwe functie: stuur ketting naar overlay
 function sendChainToOverlay(){
     if(!moneyChain) return;
     bc.postMessage({type:'initChain', chain: moneyChain});
 }
 
-// Update voortgang
 function updateOverlayChain(index){
     bc.postMessage({type:'updateChain', index});
 }
 
-// Stuur bank actie
 function overlayBanked(){
     bc.postMessage({type:'banked'});
 }
 
-// expose some helper functions for debugging in console
 window._zwak = {players, rounds, moneyChain, buildRounds, buildMoneyChain};
 
 function startRoundTimer(durationSecs) {
-  clearInterval(roundTimerInterval); // reset vorige timer
+  clearInterval(roundTimerInterval); 
   roundTimeLeft = durationSecs;
   updateTimerDisplay();
 
@@ -1754,13 +1583,11 @@ function startRoundTimer(durationSecs) {
     roundTimeLeft--;
     updateTimerDisplay();
     
-    // Broadcast timer update naar display
     broadcastToDisplay({
         type: 'round_timer',
         time: roundTimeLeft
     });
 
-    // ⏰ Stop ronde als tijd op is
     if (roundTimeLeft <= 0) {
       clearInterval(roundTimerInterval);
       flashMessage('Tijd is voorbij voor deze ronde!');
@@ -1768,19 +1595,10 @@ function startRoundTimer(durationSecs) {
       chainIndex = 0;
       updateHeads();
 
-      // nu mag de host elimineren
       eliminateBtn.disabled = false;
 
-      // stop reguliere rondemuziek
-      // if (bedjeAudio && !bedjeAudio.paused) {
-      //   bedjeAudio.pause();
-      //   bedjeAudio.currentTime = 0;
-      // }
-
-      // 🆕 Toon sterkste en zwakste schakel
       renderStrongestWeakest(currentRound);
       
-      // Update knop-zichtbaarheid
       updateButtonVisibility();
     }
 
