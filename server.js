@@ -6,7 +6,6 @@ const path = require('path');
 const app = express();
 const PORT = 3000;
 
-// Serve static files
 app.use(express.static(__dirname));
 
 // Routes
@@ -22,10 +21,8 @@ app.get('/candidate-voting', (req, res) => {
     res.sendFile(path.join(__dirname, 'candidate-voting.html'));
 });
 
-// Create HTTP server
 const server = http.createServer(app);
 
-// Create WebSocket server
 const wss = new WebSocket.Server({ server });
 
 let gameState = {
@@ -39,14 +36,12 @@ let gameState = {
     currentPlayer: null
 };
 
-// Store connected clients
 const clients = {
     hosts: new Set(),
     displays: new Set(),
     candidates: new Set()
 };
 
-// Track logged in candidates to prevent multiple logins
 const loggedInCandidates = new Set();
 
 wss.on('connection', (ws, req) => {
@@ -57,14 +52,12 @@ wss.on('connection', (ws, req) => {
             const data = JSON.parse(message);
             console.log('Received:', data.type);
 
-            // Register client type
             if (data.type === 'register') {
                 if (data.role === 'host') {
                     clients.hosts.add(ws);
                     ws.role = 'host';
                     console.log('Host registered. Total hosts:', clients.hosts.size);
                     
-                    // Send current state to new host
                     ws.send(JSON.stringify({
                         type: 'state_sync',
                         state: gameState
@@ -74,7 +67,6 @@ wss.on('connection', (ws, req) => {
                     ws.role = 'display';
                     console.log('Display registered. Total displays:', clients.displays.size);
                     
-                    // Send current state to new display
                     ws.send(JSON.stringify({
                         type: 'state_sync',
                         state: gameState
@@ -82,10 +74,9 @@ wss.on('connection', (ws, req) => {
                 } else if (data.role === 'candidate') {
                     clients.candidates.add(ws);
                     ws.role = 'candidate';
-                    ws.loggedInPlayerId = null; // Track which player this candidate represents
+                    ws.loggedInPlayerId = null; 
                     console.log('Candidate registered. Total candidates:', clients.candidates.size);
                     
-                    // Send current game state to candidate
                     ws.send(JSON.stringify({
                         type: 'game_created',
                         players: gameState.players
@@ -94,7 +85,6 @@ wss.on('connection', (ws, req) => {
                 return;
             }
 
-            // Update game state for certain events
             switch (data.type) {
                 case 'game_created':
                     gameState.players = data.players;
@@ -137,7 +127,6 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'voting_started':
-                    // Update players in case they've changed
                     if (data.players) {
                         gameState.players = data.players;
                     }
@@ -159,12 +148,10 @@ wss.on('connection', (ws, req) => {
                         currentQuestion: null,
                         currentPlayer: null
                     };
-                    loggedInCandidates.clear(); // Reset candidate logins on game reset
+                    loggedInCandidates.clear();
                     break;
 
-                // Candidate-specific messages
                 case 'candidate_login':
-                    // Handle candidate login attempt
                     if (loggedInCandidates.has(data.playerId)) {
                         ws.send(JSON.stringify({
                             type: 'error',
@@ -182,7 +169,6 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'candidate_vote':
-                    // Handle candidate vote
                     if (ws.loggedInPlayerId !== data.voterId) {
                         ws.send(JSON.stringify({
                             type: 'error',
@@ -191,7 +177,6 @@ wss.on('connection', (ws, req) => {
                         return;
                     }
 
-                    // Forward vote to all hosts
                     clients.hosts.forEach(client => {
                         if (client.readyState === WebSocket.OPEN) {
                             client.send(JSON.stringify({
@@ -202,7 +187,6 @@ wss.on('connection', (ws, req) => {
                         }
                     });
 
-                    // Confirm vote to candidate
                     ws.send(JSON.stringify({
                         type: 'vote_registered'
                     }));
@@ -211,7 +195,6 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'request_state':
-                    // Send current game state to requesting client
                     ws.send(JSON.stringify({
                         type: 'game_created',
                         players: gameState.players
@@ -219,7 +202,6 @@ wss.on('connection', (ws, req) => {
                     break;
             }
 
-            // Broadcast to all displays (but not back to hosts)
             if (ws.role === 'host') {
                 clients.displays.forEach(client => {
                     if (client.readyState === WebSocket.OPEN) {
@@ -227,7 +209,6 @@ wss.on('connection', (ws, req) => {
                     }
                 });
 
-                // Also broadcast voting-related messages to candidates
                 if (data.type === 'voting_started' || data.type === 'voting_ended') {
                     clients.candidates.forEach(client => {
                         if (client.readyState === WebSocket.OPEN) {
@@ -239,7 +220,6 @@ wss.on('connection', (ws, req) => {
                 console.log(`Broadcasted ${data.type} to ${clients.displays.size} displays and ${clients.candidates.size} candidates`);
             }
             
-            // If display sends data, broadcast to hosts
             if (ws.role === 'display') {
                 clients.hosts.forEach(client => {
                     if (client.readyState === WebSocket.OPEN) {
@@ -262,7 +242,6 @@ wss.on('connection', (ws, req) => {
             console.log('Display disconnected. Remaining displays:', clients.displays.size);
         } else if (ws.role === 'candidate') {
             clients.candidates.delete(ws);
-            // Remove from logged in candidates if they were logged in
             if (ws.loggedInPlayerId) {
                 loggedInCandidates.delete(ws.loggedInPlayerId);
                 console.log(`Candidate logged out: player ${ws.loggedInPlayerId}`);
@@ -275,7 +254,6 @@ wss.on('connection', (ws, req) => {
         console.error('WebSocket error:', error);
     });
 
-    // Send initial connection confirmation
     ws.send(JSON.stringify({
         type: 'connection_established',
         message: 'Connected to De Zwakste Schakel server'
@@ -292,7 +270,6 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log('');
     console.log('Network access:');
     
-    // Get local IP addresses
     const os = require('os');
     const interfaces = os.networkInterfaces();
     for (const name of Object.keys(interfaces)) {
@@ -306,7 +283,6 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log('='.repeat(60));
 });
 
-// Graceful shutdown
 process.on('SIGINT', () => {
     console.log('\nShutting down server...');
     wss.close(() => {
